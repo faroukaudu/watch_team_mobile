@@ -1,0 +1,58 @@
+name: watch_team
+description: "Watch Team - Security Service Provider."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  animated_splash_screen: ^1.3.0
+  page_transition: ^2.0.9
+  flutter_svg: ^2.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_native_splash: ^2.4.6
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+  animations: ^2.0.7
+
+flutter:
+  uses-material-design: true
+  assets:
+    - images/logo.png
+    - images/logo-dark.png
+    - images/logonew.png
+    - images/brand.png
+    - images/app-icon.png
+#    - assets/logo.png
+#    - assets/logo.png
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: images/logo.png
+  branding: images/brand.png
+  color_dark: "#121212"
+#  image_dark: images/logo.png
+#  branding_dark: images/logo.png
+
+  android_12:
+    image: images/logo-dark.png
+    icon_background_color: "#ffffff"
+#    image_dark: images/logo-dark.png
+#    icon_background_color_dark: "#121212"
+
+  web: false
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "images/app-icon.png"  # Replace with your icon path
+#  adaptive_icon_background: "#FFFFFF"     # Android 8+ adaptive background (optional)
+  adaptive_icon_foreground: "images/icon-bg.png" # optional

@@ -1,0 +1,4 @@
+<resources>
+    <color name="splash_color">#FFFFFF</color> <!-- or whatever background color you want -->
+	<color name="ic_launcher_background">#FFFFFF</color>
+</resources>
