@@ -49,5 +49,7 @@
 		<false/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSCameraUsageDescription</key>
+        <string>This app uses the camera to control the flashlight.</string>
 	</dict>
 </plist>

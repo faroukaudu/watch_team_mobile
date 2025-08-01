@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '/routes.dart';
 
 void main() async{
+
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

@@ -1,55 +1,126 @@
 import 'package:flutter/material.dart';
+import 'package:torch_light/torch_light.dart';
+import '../postsite_navigator.dart';
 import '../routes.dart';
 import '../main.dart';
+import 'home-dash.dart';
+import 'post_site.dart';
+import 'time_clock.dart';
 
 class DashBoardScreen extends StatefulWidget {
   const DashBoardScreen({super.key});
 
+
   @override
+
   State<DashBoardScreen> createState() => _DashBoardScreenState();
 }
 
+
 class _DashBoardScreenState extends State<DashBoardScreen> {
+
+  bool isTorchOn = false;
+  Future<void> _enableTorch(BuildContext context) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+
+
+    try {
+
+      if(isTorchOn == false){
+        isTorchOn =true;
+        await TorchLight.enableTorch();
+
+      }else{
+        isTorchOn =false;
+        await TorchLight.disableTorch();
+
+      }
+
+    } on Exception catch (_) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not enable torch'),
+        ),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    TorchLight.disableTorch();
+  }
+
+
+  // Bottom NAV Bar Selection
+  int _selectedindex = 0;
+
+  // ✅ List of page widgets
+  final List<Widget> _pages = [
+    HomeDashboard(),
+    PostSiteNavigator(),
+    TimeClock(),
+    // PostsiteDetails()
+    // MessengerPage(),
+  ];
+
+  // ✅ List of app bar titles
+  final List<String> _titles = [
+    'Watch Team',
+    'Post Site',
+    'Time Clock',
+    'Messenger',
+  ];
+
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.blueGrey,
-          title: Text("WatchTeam", style: TextStyle(fontWeight: FontWeight.w700),),
-          centerTitle: true,
-          actions: [
-            IconButton(
-                icon:Icon(Icons.search),
-                onPressed: (){
-                  print("Ap Bar");
-      },)
-          ],
-        ),
-        drawer: Drawer(
-          backgroundColor: Colors.black54,
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Color(0xFF123458),
+        title: Text(_titles[_selectedindex], style: TextStyle(fontWeight: FontWeight.w700),),
+        centerTitle: true,
+        actions: [
+          IconButton(
+              icon:Icon(Icons.search),
+              onPressed: (){
+                print("Ap Bar");
+    },)
+        ],
+      ),
+      drawer: SafeArea(
+        child: Drawer(
+          backgroundColor: Colors.black,
           child: ListView(
 
             padding: EdgeInsets.zero,
 
             children: [
               DrawerHeader(
-                decoration: BoxDecoration(color: Colors.blueGrey),
+                // padding: EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(color: Colors.blueGrey,
+                image: DecorationImage(image: AssetImage('images/drawer-head.jpg'),
+                fit: BoxFit.cover)
+                ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
+                  // mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.account_circle, size: 100, color: Colors.white),
+                    Icon(Icons.account_circle, size: 60, color: Colors.white),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text("Farouk Audu ", style:
-                          TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 25),),
-                          Text("fagzy99@gmail.com", style: TextStyle(fontSize: 12),),
-                          Text("+2348160278321", style: TextStyle(fontSize: 12),),
-                        ],
+                      child: Container(
+                        margin: EdgeInsets.symmetric(horizontal: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("Farouk Audu ", style:
+                            TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20),),
+                            Text("fagzy99@gmail.com", style: TextStyle(fontSize: 12),),
+                            Text("+2348160278321", style: TextStyle(fontSize: 12),),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -81,197 +152,79 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   child: Divider(thickness: 0.5, height: 10, color: Colors.white24,)),
               ListTile(
                 leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
-                title: Text("Select Company", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                title: Text("Chat Support", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
                 visualDensity: VisualDensity(vertical: -4),
               ),
               ListTile(
                 leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
-                title: Text("Settings", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                title: Text("Email Support", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                visualDensity: VisualDensity(vertical: -4),
+              ),
+              ListTile(
+                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                title: Text("Support Center", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                visualDensity: VisualDensity(vertical: -4),
+              ),
+              ListTile(
+                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                title: Text("Feedback", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                visualDensity: VisualDensity(vertical: -4),
+              ),
+              ListTile(
+                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                title: Text("Share App", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                visualDensity: VisualDensity(vertical: -4),
+              ),
+              Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 15),
+                  child: Divider(thickness: 0.5, height: 10, color: Colors.white24,)),
+              ListTile(
+                leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
+                title: Text("About Watch Team", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                visualDensity: VisualDensity(vertical: -4),
+              ),
+              ListTile(
+                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                title: Text("App Version", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
                 visualDensity: VisualDensity(vertical: -4),
               ),
 
             ],
           ),
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                // crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // WORKED HOURS
-                  Expanded(
-                    child: Container(
-                      margin: EdgeInsets.all(8),
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[800], // Background color
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Hours Worked', style: TextStyle( color: Colors.white ,fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                children: [
-                                  Text("Daily", style: TextStyle(color: Colors.white),),
-                                  Text("00:00",style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Text("Weekly", style: TextStyle(color: Colors.white),),
-                                  Text("00:00",style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
-                              ),
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      margin: EdgeInsets.all(8),
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[800], // Background color
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Shift Status', style: TextStyle( color: Colors.white ,fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                children: [
-                                  Text("Pending", style: TextStyle(color: Colors.white),),
-                                  Text("0",style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Text("Confirmed", style: TextStyle(color: Colors.white),),
-                                  Text("0",style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
-                              ),
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
+      ),
+      body: IndexedStack(
+        index: _selectedindex,
+        children: _pages,
+      ),
 
 
-                ],
-              ),
-              // Charts
+      bottomNavigationBar: BottomNavigationBar(
+          currentIndex:_selectedindex,
+        backgroundColor: Color(0xFF123458),
+          selectedItemColor: Colors.orange[600],
+          unselectedItemColor:Colors.white ,
+        iconSize: 22,
+        unselectedFontSize: 10,
+        elevation: 150,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+        selectedFontSize: 13,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index){
+            setState(() {
+              _selectedindex = index;
+            });
+        },// REQUIRED for 4+ items
 
-                Container(
-                  height: 260,
-
-                  width: double.maxFinite,
-                  margin: EdgeInsets.all(8),
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800], // Background color
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Card 1 Title', style: TextStyle(fontWeight: FontWeight.bold)),
-                      SizedBox(height: 8),
-                      Text('Some description here.'),
-                    ],
-                  ),
-                ),
-
-              // Bottom
-              Expanded(
-                child: Container(
-                  width: double.maxFinite,
-                  margin: EdgeInsets.fromLTRB(8, 8, 8, 0),
-                  padding: EdgeInsets.all(1),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF222324), // Background color
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(12), bottom: Radius.circular(0)),
-                  ),
-                  child: SingleChildScrollView(
-                   child: Table(
-                       border: TableBorder(
-                         horizontalInside: BorderSide(color: Colors.grey.shade800),
-                         verticalInside: BorderSide(color: Colors.grey.shade800),
-                       ),
-                       children: [
-                         TableRow(
-                             children: [
-                           IconsText(iconType: Icons.event, itemName: "Events",),
-                           IconsText(iconType: Icons.send_time_extension, itemName: "Dispatch",),
-                           IconsText(iconType: Icons.local_taxi, itemName: "Vehicle Patrol",),
-                                      ]
-                         ),
-                         TableRow(
-                             children: [
-                               IconsText(iconType: Icons.policy, itemName: "Docs & Policies"),
-                               IconsText(iconType: Icons.event_note, itemName: "Schedule",),
-                               IconsText(iconType: Icons.av_timer, itemName: "Open Shifts",),
-                             ]
-                         ),
-                         TableRow(
-                             children: [
-                               IconsText(iconType: Icons.flashlight_on, itemName: "Flash Light",),
-                               IconsText(iconType: Icons.nest_cam_wired_stand, itemName: "Watch Mode",),
-                               IconsText(iconType: Icons.event_available, itemName: "Availability",),
-                             ]
-                         ),
-                         TableRow(
-                             children: [
-                               IconsText(iconType: Icons.alarm, itemName: "Remainders",),
-                               IconsText(iconType: Icons.edit_document, itemName: "Notes",),
-                               Text(""),
-                               // IconsText(iconType: Icons.attractions_outlined, itemName: "Availability",),
-                             ]
-                         ),
-
-                  ]
-                   ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-            // currentIndex: _selectIndex,
-          backgroundColor: Colors.grey[800],
-            selectedItemColor: Colors.blue,
-            unselectedItemColor:Colors.white ,
-          type: BottomNavigationBarType.fixed, // REQUIRED for 4+ items
-
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label:"Home"),
-              BottomNavigationBarItem(icon: Icon(Icons.apartment), label:"POST SITE"),
-              BottomNavigationBarItem(icon: Icon(Icons.browse_gallery), label:"TIME CLOCK"),
-              BottomNavigationBarItem(icon: Icon(Icons.mark_unread_chat_alt), label:"MESSENGER"),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label:"Home"),
+            BottomNavigationBarItem(icon: Icon(Icons.apartment), label:"POST SITE"),
+            BottomNavigationBarItem(icon: Icon(Icons.browse_gallery), label:"TIME CLOCK"),
+            BottomNavigationBarItem(icon: Icon(Icons.mark_unread_chat_alt), label:"MESSENGER"),
 
 
-            ],
+          ],
 
-        ),
       ),
     );
   }
@@ -317,6 +270,39 @@ class IconsText extends StatelessWidget {
     );
   }
 }
+
+
+Future<bool> _isTorchAvailable(BuildContext context) async {
+  final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+  try {
+    return await TorchLight.isTorchAvailable();
+  } on Exception catch (_) {
+    scaffoldMessenger.showSnackBar(
+      const SnackBar(
+        content: Text('Could not check if the device has an available torch'),
+      ),
+    );
+    rethrow;
+  }
+}
+
+
+
+Future<void> _disableTorch(BuildContext context) async {
+  final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+  try {
+    await TorchLight.disableTorch();
+  } on Exception catch (_) {
+    scaffoldMessenger.showSnackBar(
+      const SnackBar(
+        content: Text('Could not disable torch'),
+      ),
+    );
+  }
+}
+
 
 
 
