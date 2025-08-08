@@ -155,12 +155,18 @@ class _HomeDashboardState extends State<HomeDashboard> {
                 children: [
                   Text('Card 1 Title', style: TextStyle(fontWeight: FontWeight.bold)),
                   SizedBox(height: 8),
-                  Text('Some description here.'),
+                  CircularProgressIndicator(
+                  // value: 0.5,
+                    color: Colors.deepOrange,
+                    strokeWidth: 4,
+                    backgroundColor: Colors.green,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                  ),
                   // ElevatedButton(onPressed:(){
                   //   _enableTorch(context);
                   //
                   //   setState(() {
-                  //     //TODO: FIX THE TOUCH TO TH BUTTON
+                  //     //TODO: FIX THE TOUCH TO THE BUTTON
                   //   });
                   // }
                   //     , child: Text("Turn Torch"))

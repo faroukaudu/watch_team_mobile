@@ -43,6 +43,11 @@
             android:name="android.windowSplashScreenIconBackgroundColor"
             android:resource="@android:color/transparent" />
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyASbZIITafeYZViSsD0PqqPcUVaX_dabm8"/>
+
+
     </application>
 <!--    I added this to turn on torch light-->
     <uses-permission android:name="android.permission.CAMERA"/>

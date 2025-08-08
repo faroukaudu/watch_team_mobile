@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../routes.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 // import 'package:animations/animations.dart';
 
 // import 'package:flutter/material.dart';
@@ -25,111 +27,149 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _password;
   bool isPhoneSelected = true;
   bool _wasPhoneSelected = true;
+  // 192.168.43.39
+
+  bool _isloading = false;
+
+  void _showLoader() async {
+    setState(() {
+      _isloading = true;
+    });
+
+    await Future.delayed(const Duration(seconds: 3));
+
+    setState(() {
+      _isloading = false;
+    });
+
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        body: SafeArea(
-          child: Container(
-            margin: EdgeInsets.all(20),
-            child: Column(
-              // mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Hero(
-                  tag: "logo",
+    return Stack(
+      children: [
+        Scaffold(
+          body: SafeArea(
+            child: Container(
+
+              margin: EdgeInsets.all(20),
+              child: Column(
+                // mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Hero(
+                    tag: "logo",
                     child: Image.asset("images/logonew.png", scale: 18),
-                ),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Watch',
-                        style: TextStyle(
-                            color: Colors.white, fontSize: 30, fontWeight: FontWeight.w700),
-                      ),
-                      TextSpan(
-                        text: 'Team',
-                        style: TextStyle(color: Colors.blue, fontSize: 30,fontWeight: FontWeight.w700 ),
-                      ),
-                    ],
                   ),
-                ),
-
-                Text("Asset Protection Suite", style: TextStyle(fontWeight: FontWeight.bold, ),),
-                Container(
-                  margin: EdgeInsets.symmetric(vertical: 30),
-                  height: 60,
-                  decoration: BoxDecoration(color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey)),
-                  child: Row(
-
-                    children: [
-                      Expanded(child: GestureDetector(
-                        onTap: (){
-                          setState(() {
-                            // _wasPhoneSelected = isPhoneSelected;
-                            isPhoneSelected = true;
-                          });
-                          },
-                        child: Container(
-                          // color: Colors.black,
-                          decoration: BoxDecoration(color: isPhoneSelected?Colors.black:Colors.transparent,
-                          borderRadius: BorderRadius.circular(10)),
-                          alignment: Alignment.center,
-                          child: Text("Phone",
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Watch',
                           style: TextStyle(
-                            color: isPhoneSelected? Colors.blue:Colors.grey,
-                            fontWeight: FontWeight.bold,
-
-                          ),),
+                              color: Colors.white, fontSize: 30, fontWeight: FontWeight.w700),
                         ),
-                      )),
-                      Container(
-                        width: 1, // Thickness of the line
-                        height: 60, // Height of the line
-                        color: Colors.grey,
-                      ),
-                      Expanded(child: GestureDetector(
-                        onTap: (){
-                          setState(() {
-                            // _wasPhoneSelected = isPhoneSelected;
-                            isPhoneSelected = false;
-                          });
-                        },
-                        child: Container(
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(color: isPhoneSelected?Colors.transparent:Colors.black,
-                              borderRadius: BorderRadius.circular(10)),
-                          child: Text("Email",
-                            style: TextStyle(
-                              color: isPhoneSelected?Colors.grey:Colors.deepOrangeAccent,
-                              fontWeight: FontWeight.bold,
-
-                            ),),
+                        TextSpan(
+                          text: 'Team',
+                          style: TextStyle(color: Colors.blue, fontSize: 30,fontWeight: FontWeight.w700 ),
                         ),
-                      ))
-                    ],
+                      ],
+                    ),
                   ),
 
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child:isPhoneSelected?
-                    PhoneForm(key: ValueKey('phone'), formKey: _phoneFormKey,
-                        phoneController: _phoneController,
-                        passwordController: _passwordController):
-                    EmailForm(key: ValueKey('email'), formKey: _emailFormKey,
-                        emailController: _emailController,
-                        passwordController: _passwordController),
-                ),
-                ),
+                  Text("Asset Protection Suite", style: TextStyle(fontWeight: FontWeight.bold, ),),
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 30),
+                    height: 60,
+                    decoration: BoxDecoration(color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey)),
+                    child: Row(
 
-              ],
+                      children: [
+                        Expanded(child: GestureDetector(
+                          onTap: (){
+                            setState(() {
+                              // _wasPhoneSelected = isPhoneSelected;
+                              isPhoneSelected = true;
+                            });
+                          },
+                          child: Container(
+                            // color: Colors.black,
+                            decoration: BoxDecoration(color: isPhoneSelected?Colors.black:Colors.transparent,
+                                borderRadius: BorderRadius.circular(10)),
+                            alignment: Alignment.center,
+                            child: Text("Phone",
+                              style: TextStyle(
+                                color: isPhoneSelected? Colors.blue:Colors.grey,
+                                fontWeight: FontWeight.bold,
+
+                              ),),
+                          ),
+                        )),
+                        Container(
+                          width: 1, // Thickness of the line
+                          height: 60, // Height of the line
+                          color: Colors.grey,
+                        ),
+                        Expanded(child: GestureDetector(
+                          onTap: (){
+                            setState(() {
+                              // _wasPhoneSelected = isPhoneSelected;
+                              isPhoneSelected = false;
+                            });
+                          },
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(color: isPhoneSelected?Colors.transparent:Colors.black,
+                                borderRadius: BorderRadius.circular(10)),
+                            child: Text("Email",
+                              style: TextStyle(
+                                color: isPhoneSelected?Colors.grey:Colors.deepOrangeAccent,
+                                fontWeight: FontWeight.bold,
+
+                              ),),
+                          ),
+                        ))
+                      ],
+                    ),
+
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child:isPhoneSelected?
+                      PhoneForm(key: ValueKey('phone'), formKey: _phoneFormKey,
+                          phoneController: _phoneController,
+                          passwordController: _passwordController):
+                      EmailForm(key: ValueKey('email'), formKey: _emailFormKey,
+                          emailController: _emailController,
+                          passwordController: _passwordController,loaderOnPressed: _showLoader, ),
+                    ),
+                  ),
+
+                ],
+              ),
             ),
           ),
         ),
-      );
+        if(_isloading) ...[
+          Positioned.fill(child: Container(
+            color: Colors.black54,
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Colors.blue,
+
+              ),
+
+            ),
+          )),
+        ],
+
+
+
+      ],
+    );
 
   }
 }
@@ -208,8 +248,9 @@ class PhoneForm extends StatelessWidget {
                     height: 60,
                     width: double.infinity,
                     child: ElevatedButton(onPressed: (){
-                      Navigator.pushNamed(context, AppRoutes.dashboard);
+                      // Navigator.pushNamed(context, AppRoutes.dashboard);
                       if(formKey.currentState!.validate()){
+
 
                         // formKey.currentState!.save();
                         print("phone: ${phoneController.text}");
@@ -247,10 +288,13 @@ class EmailForm extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController emailController;
   final TextEditingController passwordController;
+  final VoidCallback loaderOnPressed;
 
 
   // final String formKey;
-  const EmailForm({Key? key, required this.formKey, required this.emailController, required this.passwordController}): super(key: key);
+  const EmailForm({Key? key, required this.formKey, required this.emailController,
+    required this.passwordController, required this.loaderOnPressed}): super(key: key);
+
 
 
 
@@ -318,13 +362,27 @@ class EmailForm extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     height: 60,
-                    child: ElevatedButton(onPressed: (){
+                    child: ElevatedButton(onPressed: () async {
+                      // signInRequest();
+
 
                       if(formKey.currentState!.validate()){
-                        Navigator.pushNamed(context, AppRoutes.dashboard);
+                        loaderOnPressed();
+                        // Navigator.pushNamed(context, AppRoutes.dashboard);
                         // formKey.currentState!.save();
-                        print("Email: ${emailController.text}");
-                        print("password: ${passwordController.text}");
+                        final email = emailController.text;
+                        final password = passwordController.text;
+                        bool loginSuccess = await signInRequest(email,password);
+                        // print("Email: ${emailController.text}");
+                        // print("password: ${passwordController.text}");
+                        if(loginSuccess){
+                          Navigator.pushNamed(context, AppRoutes.dashboard);
+                        }else{
+                          await Future.delayed(const Duration(seconds: 3));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Invalid phone or password')),
+                          );
+                        }
                       }
                     },
                         style: ButtonStyle(
@@ -340,9 +398,7 @@ class EmailForm extends StatelessWidget {
               )
           ),
         ),
-        TextButton(onPressed: (){
-          print("Forgot Password");
-        }, child: Text("Forgot Password?",
+        TextButton(onPressed: loaderOnPressed, child: Text("Forgot Password?",
           style: TextStyle(fontWeight:FontWeight.bold, fontSize: 15 ),)),
         Text("Version 1.0.0",
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w300)
@@ -352,3 +408,25 @@ class EmailForm extends StatelessWidget {
   }
 }
 
+Future signInRequest (email, password)async{
+  final url = Uri.parse('http://192.168.43.39:9000/guard-signin');
+
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'username': email,
+      'password': password,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    print('Server response: ${response.body}');
+    return true;
+  } else {
+    print('Failed: ${response.statusCode}');
+    return false;
+  }
+}

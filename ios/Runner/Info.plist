@@ -51,5 +51,9 @@
 		<false/>
 		<key>NSCameraUsageDescription</key>
         <string>This app uses the camera to control the flashlight.</string>
+        <key>io.flutter.embedded_views_preview</key>
+        <true/>
+        <key>GMSApiKey</key>
+        <string>AIzaSyASbZIITafeYZViSsD0PqqPcUVaX_dabm8</string>
 	</dict>
 </plist>

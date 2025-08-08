@@ -1,15 +1,48 @@
 import 'package:flutter/material.dart';
 import 'post_site.dart';
 import 'home-dash.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class PostsiteDetails extends StatefulWidget {
   const PostsiteDetails({super.key});
 
   @override
   State<PostsiteDetails> createState() => _PostsiteDetailsState();
+
 }
+late GoogleMapController mapController;
+
+
+// final LatLng _center = const LatLng(37.76670350847729, -122.4103439222306); // Example: San Francisco
+
+// void _onMapCreated(GoogleMapController controller) {
+//   mapController = controller;
+// }
 
 class _PostsiteDetailsState extends State<PostsiteDetails> {
+  late GoogleMapController _mapController;
+
+  // The specific Lat/Lng where you want to drop the marker
+  final LatLng targetLocation = LatLng(37.76678419626347, -122.41042047508151); // San Franscis co
+
+  final Set<Marker> _markers = {};
+
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+
+    setState(() {
+      _markers.add(
+        Marker(
+          markerId: MarkerId("targetLocation"),
+          position: targetLocation,
+          infoWindow: InfoWindow(
+            title: "San Franscisco",
+            snippet: "United State",
+          ),
+        ),
+      );
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,8 +51,17 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
         children: [
           Expanded(
             flex: 3,
-            child: Container(
-              color: Colors.greenAccent,
+            child:GoogleMap(
+              onMapCreated: _onMapCreated,
+              initialCameraPosition: CameraPosition(
+                target: targetLocation,
+                tilt: 15.0,
+                zoom: 17.0,
+              ),
+              myLocationEnabled: true,
+              zoomControlsEnabled: true,
+              mapType: MapType.satellite,
+              markers: _markers,
             ),
           ),
           Expanded(
@@ -109,7 +151,7 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
                             IconsText(iconType: Icons.local_parking, itemName: "Parking Manager",),
                             IconsText(iconType: Icons.supervisor_account, itemName: "Security Team",),
                             IconsText(iconType: Icons.contact_phone, itemName: "Contact",),
-                            // Text(""),
+                            // Textgtgt(""),
                             // IconsText(iconType: Icons.attractions_outlined, itemName: "Availability",),
                           ]
                       ),
