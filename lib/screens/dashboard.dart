@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:torch_light/torch_light.dart';
 import '../postsite_navigator.dart';
+import 'package:watch_team/session_data.dart';
 import '../routes.dart';
 import '../main.dart';
 import 'home-dash.dart';
 import 'post_site.dart';
 import 'time_clock.dart';
 
+
+var externalProfile = SessionData.userProfile;
+var company = SessionData.companyInfo;
 class DashBoardScreen extends StatefulWidget {
   const DashBoardScreen({super.key});
 
@@ -46,10 +50,13 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     }
   }
 
+  Map<String, dynamic>? profile;
+
   @override
   void initState() {
     // TODO: implement initState
     TorchLight.disableTorch();
+    profile = SessionData.userProfile;
   }
 
 
@@ -65,156 +72,166 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     // MessengerPage(),
   ];
 
+
+
   // ✅ List of app bar titles
   final List<String> _titles = [
-    'Watch Team',
+    "${company!['companyName']}",
     'Post Site',
     'Time Clock',
     'Messenger',
   ];
 
 
+
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Color(0xFF123458),
-        title: Text(_titles[_selectedindex], style: TextStyle(fontWeight: FontWeight.w700),),
-        centerTitle: true,
-        actions: [
-          IconButton(
+    if(profile == null){
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Text('No Data Found'),),);
+    }else {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Color(0xFF123458),
+          title: Text(_titles[_selectedindex], style: TextStyle(fontWeight: FontWeight.w700),),
+          centerTitle: true,
+          actions: [
+            IconButton(
               icon:Icon(Icons.search),
               onPressed: (){
                 print("Ap Bar");
-    },)
-        ],
-      ),
-      drawer: SafeArea(
-        child: Drawer(
-          backgroundColor: Colors.black,
-          child: ListView(
+              },)
+          ],
+        ),
+        drawer: SafeArea(
+          child: Drawer(
+            backgroundColor: Colors.black,
+            child: ListView(
 
-            padding: EdgeInsets.zero,
+              padding: EdgeInsets.zero,
 
-            children: [
-              DrawerHeader(
-                // padding: EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(color: Colors.blueGrey,
-                image: DecorationImage(image: AssetImage('images/drawer-head.jpg'),
-                fit: BoxFit.cover)
-                ),
-                child: Row(
-                  // mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.account_circle, size: 60, color: Colors.white),
-                    Expanded(
-                      child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text("Farouk Audu ", style:
-                            TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20),),
-                            Text("fagzy99@gmail.com", style: TextStyle(fontSize: 12),),
-                            Text("+2348160278321", style: TextStyle(fontSize: 12),),
-                          ],
-                        ),
-                      ),
+              children: [
+                DrawerHeader(
+                  // padding: EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(color: Colors.blueGrey,
+                        image: DecorationImage(image: AssetImage('images/drawer-head.jpg',),
+                            fit: BoxFit.cover)
                     ),
-                  ],
-                )
-              ),
-              Container(
-                margin: EdgeInsets.fromLTRB(20, 15, 0, 10),
-                  child: Text("MANAGE")),
-              ListTile(
-                leading: Icon(Icons.home, size: 25, color: Colors.blueGrey,),
-                title: Text("Home", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),),
-                visualDensity: VisualDensity(vertical: -3), // tighten vertical space
-                onTap: (){
-                  print("Home");
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
-                title: Text("Select Company", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),),
-                visualDensity: VisualDensity(vertical: -3),
-              ),
-              ListTile(
-                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
-                title: Text("Settings", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),),
-                visualDensity: VisualDensity(vertical: -3),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 15),
-                  child: Divider(thickness: 0.5, height: 10, color: Colors.white24,)),
-              ListTile(
-                leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
-                title: Text("Chat Support", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
-                visualDensity: VisualDensity(vertical: -4),
-              ),
-              ListTile(
-                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
-                title: Text("Email Support", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
-                visualDensity: VisualDensity(vertical: -4),
-              ),
-              ListTile(
-                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
-                title: Text("Support Center", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
-                visualDensity: VisualDensity(vertical: -4),
-              ),
-              ListTile(
-                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
-                title: Text("Feedback", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
-                visualDensity: VisualDensity(vertical: -4),
-              ),
-              ListTile(
-                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
-                title: Text("Share App", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
-                visualDensity: VisualDensity(vertical: -4),
-              ),
-              Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 15),
-                  child: Divider(thickness: 0.5, height: 10, color: Colors.white24,)),
-              ListTile(
-                leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
-                title: Text("About Watch Team", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
-                visualDensity: VisualDensity(vertical: -4),
-              ),
-              ListTile(
-                leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
-                title: Text("App Version", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
-                visualDensity: VisualDensity(vertical: -4),
-              ),
+                    child: Row(
+                      // mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.account_circle, size: 60, color: Colors.white),
+                        Expanded(
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text("${profile!['fullname']}", style:
+                                TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20),),
+                                Text("${profile!['username']}", style: TextStyle(fontSize: 12),),
+                                Text("${profile!['phone']}", style: TextStyle(fontSize: 12),),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                ),
+                Container(
+                    margin: EdgeInsets.fromLTRB(20, 15, 0, 10),
+                    child: Text("MANAGE")),
+                ListTile(
+                  leading: Icon(Icons.home, size: 25, color: Colors.blueGrey,),
+                  title: Text("Home", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),),
+                  visualDensity: VisualDensity(vertical: -3), // tighten vertical space
+                  onTap: (){
+                    print("Home");
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
+                  title: Text("Select Company", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),),
+                  visualDensity: VisualDensity(vertical: -3),
+                ),
+                ListTile(
+                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                  title: Text("Settings", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),),
+                  visualDensity: VisualDensity(vertical: -3),
+                ),
+                Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 15),
+                    child: Divider(thickness: 0.5, height: 10, color: Colors.white24,)),
+                ListTile(
+                  leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
+                  title: Text("Chat Support", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                  visualDensity: VisualDensity(vertical: -4),
+                ),
+                ListTile(
+                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                  title: Text("Email Support", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                  visualDensity: VisualDensity(vertical: -4),
+                ),
+                ListTile(
+                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                  title: Text("Support Center", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                  visualDensity: VisualDensity(vertical: -4),
+                ),
+                ListTile(
+                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                  title: Text("Feedback", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                  visualDensity: VisualDensity(vertical: -4),
+                ),
+                ListTile(
+                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                  title: Text("Share App", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                  visualDensity: VisualDensity(vertical: -4),
+                ),
+                Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 15),
+                    child: Divider(thickness: 0.5, height: 10, color: Colors.white24,)),
+                ListTile(
+                  leading: Icon(Icons.house, size: 25, color: Colors.blueGrey,),
+                  title: Text("About Watch Team", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                  visualDensity: VisualDensity(vertical: -4),
+                ),
+                ListTile(
+                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey,),
+                  title: Text("App Version", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),),
+                  visualDensity: VisualDensity(vertical: -4),
+                ),
 
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-      body: IndexedStack(
-        index: _selectedindex,
-        children: _pages,
-      ),
+        body: IndexedStack(
+          index: _selectedindex,
+          children: _pages,
+        ),
 
 
-      bottomNavigationBar: BottomNavigationBar(
+        bottomNavigationBar: BottomNavigationBar(
           currentIndex:_selectedindex,
-        backgroundColor: Color(0xFF123458),
+          backgroundColor: Color(0xFF123458),
           selectedItemColor: Colors.orange[600],
           unselectedItemColor:Colors.white ,
-        iconSize: 22,
-        unselectedFontSize: 10,
-        elevation: 150,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
-        selectedFontSize: 13,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index){
+          iconSize: 22,
+          unselectedFontSize: 10,
+          elevation: 150,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+          selectedFontSize: 13,
+          type: BottomNavigationBarType.fixed,
+          onTap: (index){
             setState(() {
               _selectedindex = index;
             });
-        },// REQUIRED for 4+ items
+          },// REQUIRED for 4+ items
 
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label:"Home"),
@@ -225,8 +242,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
           ],
 
-      ),
-    );
+        ),
+      );
+    }
   }
 }
 

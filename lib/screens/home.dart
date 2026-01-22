@@ -3,6 +3,7 @@ import '../main.dart';
 import '../routes.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:watch_team/session_data.dart';
 // import 'package:animations/animations.dart';
 
 // import 'package:flutter/material.dart';
@@ -53,102 +54,107 @@ class _LoginScreenState extends State<LoginScreen> {
         Scaffold(
           body: SafeArea(
             child: Container(
+              decoration: BoxDecoration(
+                  image: DecorationImage(image: AssetImage('images/login-bg.jpg'), fit: BoxFit.cover, opacity: 0.04)
+              ),
+              child: Container(
 
-              margin: EdgeInsets.all(20),
-              child: Column(
-                // mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Hero(
-                    tag: "logo",
-                    child: Image.asset("images/logonew.png", scale: 18),
-                  ),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'Watch',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 30, fontWeight: FontWeight.w700),
-                        ),
-                        TextSpan(
-                          text: 'Team',
-                          style: TextStyle(color: Colors.blue, fontSize: 30,fontWeight: FontWeight.w700 ),
-                        ),
-                      ],
+                margin: EdgeInsets.all(20),
+                child: Column(
+                  // mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Hero(
+                      tag: "logo",
+                      child: Image.asset("images/logonew.png", scale: 18),
                     ),
-                  ),
-
-                  Text("Asset Protection Suite", style: TextStyle(fontWeight: FontWeight.bold, ),),
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 30),
-                    height: 60,
-                    decoration: BoxDecoration(color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey)),
-                    child: Row(
-
-                      children: [
-                        Expanded(child: GestureDetector(
-                          onTap: (){
-                            setState(() {
-                              // _wasPhoneSelected = isPhoneSelected;
-                              isPhoneSelected = true;
-                            });
-                          },
-                          child: Container(
-                            // color: Colors.black,
-                            decoration: BoxDecoration(color: isPhoneSelected?Colors.black:Colors.transparent,
-                                borderRadius: BorderRadius.circular(10)),
-                            alignment: Alignment.center,
-                            child: Text("Phone",
-                              style: TextStyle(
-                                color: isPhoneSelected? Colors.blue:Colors.grey,
-                                fontWeight: FontWeight.bold,
-
-                              ),),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Watch',
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 30, fontWeight: FontWeight.w700),
                           ),
-                        )),
-                        Container(
-                          width: 1, // Thickness of the line
-                          height: 60, // Height of the line
-                          color: Colors.grey,
-                        ),
-                        Expanded(child: GestureDetector(
-                          onTap: (){
-                            setState(() {
-                              // _wasPhoneSelected = isPhoneSelected;
-                              isPhoneSelected = false;
-                            });
-                          },
-                          child: Container(
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(color: isPhoneSelected?Colors.transparent:Colors.black,
-                                borderRadius: BorderRadius.circular(10)),
-                            child: Text("Email",
-                              style: TextStyle(
-                                color: isPhoneSelected?Colors.grey:Colors.deepOrangeAccent,
-                                fontWeight: FontWeight.bold,
-
-                              ),),
+                          TextSpan(
+                            text: 'Team',
+                            style: TextStyle(color: Colors.blue, fontSize: 30,fontWeight: FontWeight.w700 ),
                           ),
-                        ))
-                      ],
+                        ],
+                      ),
                     ),
 
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child:isPhoneSelected?
-                      PhoneForm(key: ValueKey('phone'), formKey: _phoneFormKey,
-                          phoneController: _phoneController,
-                          passwordController: _passwordController):
-                      EmailForm(key: ValueKey('email'), formKey: _emailFormKey,
-                          emailController: _emailController,
-                          passwordController: _passwordController,loaderOnPressed: _showLoader, ),
-                    ),
-                  ),
+                    Text("Asset Protection Suite", style: TextStyle(fontWeight: FontWeight.bold, ),),
+                    Container(
+                      margin: EdgeInsets.symmetric(vertical: 30),
+                      height: 60,
+                      decoration: BoxDecoration(color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey)),
+                      child: Row(
 
-                ],
+                        children: [
+                          Expanded(child: GestureDetector(
+                            onTap: (){
+                              setState(() {
+                                // _wasPhoneSelected = isPhoneSelected;
+                                isPhoneSelected = true;
+                              });
+                            },
+                            child: Container(
+                              // color: Colors.black,
+                              decoration: BoxDecoration(color: isPhoneSelected?Colors.black:Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10)),
+                              alignment: Alignment.center,
+                              child: Text("Phone",
+                                style: TextStyle(
+                                  color: isPhoneSelected? Colors.blue:Colors.grey,
+                                  fontWeight: FontWeight.bold,
+
+                                ),),
+                            ),
+                          )),
+                          Container(
+                            width: 1, // Thickness of the line
+                            height: 60, // Height of the line
+                            color: Colors.grey,
+                          ),
+                          Expanded(child: GestureDetector(
+                            onTap: (){
+                              setState(() {
+                                // _wasPhoneSelected = isPhoneSelected;
+                                isPhoneSelected = false;
+                              });
+                            },
+                            child: Container(
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(color: isPhoneSelected?Colors.transparent:Colors.black,
+                                  borderRadius: BorderRadius.circular(10)),
+                              child: Text("Email",
+                                style: TextStyle(
+                                  color: isPhoneSelected?Colors.grey:Colors.deepOrangeAccent,
+                                  fontWeight: FontWeight.bold,
+
+                                ),),
+                            ),
+                          ))
+                        ],
+                      ),
+
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child:isPhoneSelected?
+                        PhoneForm(key: ValueKey('phone'), formKey: _phoneFormKey,
+                            phoneController: _phoneController,
+                            passwordController: _passwordController):
+                        EmailForm(key: ValueKey('email'), formKey: _emailFormKey,
+                            emailController: _emailController,
+                            passwordController: _passwordController,loaderOnPressed: _showLoader, ),
+                      ),
+                    ),
+
+                  ],
+                ),
               ),
             ),
           ),
@@ -272,7 +278,7 @@ class PhoneForm extends StatelessWidget {
           ),
         ),
         TextButton(onPressed: (){
-          print("Forgot Password");
+          Navigator.pushNamed(context, '/select_report');
         }, child: Text("Forgot Password?",
           style: TextStyle(fontWeight:FontWeight.bold, fontSize: 15 ),)),
         Text("Version 1.0.0",
@@ -372,11 +378,13 @@ class EmailForm extends StatelessWidget {
                         // formKey.currentState!.save();
                         final email = emailController.text;
                         final password = passwordController.text;
-                        bool loginSuccess = await signInRequest(email,password);
+                        final loginSuccess = await signInRequest(email,password);
+                        final profile = await fetchUserProfile(loginSuccess['id']); // returns Map
                         // print("Email: ${emailController.text}");
                         // print("password: ${passwordController.text}");
-                        if(loginSuccess){
-                          Navigator.pushNamed(context, AppRoutes.dashboard);
+                        if(loginSuccess['success']){
+                          Navigator.pushNamed(context, AppRoutes.dashboard,);
+                          // fetchUserProfile(loginSuccess['id']);
                         }else{
                           await Future.delayed(const Duration(seconds: 3));
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -398,8 +406,10 @@ class EmailForm extends StatelessWidget {
               )
           ),
         ),
-        TextButton(onPressed: loaderOnPressed, child: Text("Forgot Password?",
-          style: TextStyle(fontWeight:FontWeight.bold, fontSize: 15 ),)),
+        InkWell(
+          child: TextButton(onPressed: loaderOnPressed, child: Text("Forgot Password?",
+            style: TextStyle(fontWeight:FontWeight.bold, fontSize: 15 ),)),
+        ),
         Text("Version 1.0.0",
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w300)
         ),
@@ -409,7 +419,8 @@ class EmailForm extends StatelessWidget {
 }
 
 Future signInRequest (email, password)async{
-  final url = Uri.parse('http://192.168.43.39:9000/guard-signin');
+  // final url = Uri.parse('http://192.168.43.39:9000/guard-signin');
+  final url = Uri.parse('http://192.168.32.39:9000/guard-signin');
 
   final response = await http.post(
     url,
@@ -424,9 +435,36 @@ Future signInRequest (email, password)async{
 
   if (response.statusCode == 200) {
     print('Server response: ${response.body}');
-    return true;
+    final data =jsonDecode(response.body);
+    return {
+      'success':true,
+      'message':data['message'],
+      'email':data['email'],
+      'id':data['userId'],
+    };
+    // return true;
   } else {
     print('Failed: ${response.statusCode}');
     return false;
+  }
+}
+
+
+Future<void> fetchUserProfile(String id) async {
+  final response = await http.get(
+    // Uri.parse('http://192.168.43.39:9000/guard-info?id=$id'),
+    Uri.parse('http://192.168.32.39:9000/guard-info?id=$id'),
+    // Uri.parse('https://watch-team.onrender.com/guard-info?id=$id'),
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    SessionData.userProfile = data['guardData'];
+    SessionData.companyInfo = data['company'];
+    SessionData.token = "oudnwoidnwdowndwoidnw";
+    print("User profile: $data");
+    // TODO: update state / navigate / show data
+  } else {
+    print("Failed to fetch user profile: ${response.statusCode}");
   }
 }
