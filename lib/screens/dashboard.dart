@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:torch_light/torch_light.dart';
 import '../postsite_navigator.dart';
 import 'package:watch_team/session_data.dart';
+import 'chat_caller.dart';
 import '../routes.dart';
 import '../main.dart';
 import 'home-dash.dart';
 import 'post_site.dart';
 import 'time_clock.dart';
+import 'chat.dart';
 
 
 var externalProfile = SessionData.userProfile;
@@ -68,6 +70,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     HomeDashboard(),
     PostSiteNavigator(),
     TimeClock(),
+    ChatUserListScreen()
     // PostsiteDetails()
     // MessengerPage(),
   ];

@@ -19,6 +19,7 @@ import '../../services/audio_rec_ser.dart';
 
 import '../media/audio_record_scrn.dart';
 import 'signature_screen.dart';
+import 'package:watch_team/global.dart' as g;
 
 enum FieldType { dropdown, date, text, textarea, radio, signature }
 
@@ -472,7 +473,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   // IMPORTANT:
   // - If you're testing on a real phone, your base URL must be your PC LAN IP.
   // - If your Node app mounts routes under /api, set apiPrefix = '/api'.
-  static const String baseUrl = 'http://192.168.32.39:9000';
+  static final String baseUrl = '${g.baseUrl}';
   static const String apiPrefix = ''; // e.g. '/api'
 
   bool submitting = false;

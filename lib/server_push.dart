@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:watch_team/global.dart' as g;
 import '../server_push.dart';
 import 'screens/home.dart';
 
@@ -21,7 +22,7 @@ class TimeClockPush {
     // required String route,
   }) async {
     print("I ma in class");
-    late String baseUrl = 'http://192.168.32.39:9000/work-report';
+    late String baseUrl = '${g.baseUrl}/work-report';
 
     final url = Uri.parse('$baseUrl');
 
@@ -79,7 +80,7 @@ class CheckInOut {
     // required String route,
   }) async {
     print("I ma in class");
-    late String baseUrl = 'http://192.168.32.39:9000/checking';
+    late String baseUrl = '${g.baseUrl}/checking';
 
     final url = Uri.parse('$baseUrl');
 
@@ -131,7 +132,7 @@ class CheckOut {
   }) async {
     print("I ma in class");
     // late String baseUrl = 'http://192.168.43.39:9000/checkingout';
-    late String baseUrl = 'http://192.168.32.39:9000/checkingout';
+    late String baseUrl = '${g.baseUrl}/checkingout';
 
     final url = Uri.parse('$baseUrl');
 

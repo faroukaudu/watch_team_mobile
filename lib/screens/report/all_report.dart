@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:watch_team/services/api_client.dart';
 import 'package:watch_team/session_data.dart';
 import 'package:watch_team/screens/report/report_detail_screen.dart';
+import 'package:watch_team/global.dart' as g;
 
 class AllReports extends StatefulWidget {
   const AllReports({super.key});
@@ -31,7 +32,7 @@ class _AllReportsState extends State<AllReports> {
     super.initState();
 
     // ✅ Your backend IP
-    api = ApiClient(baseUrl: 'http://192.168.32.39:9000');
+    api = ApiClient(baseUrl: '${g.baseUrl}');
 
     final profile = SessionData.userProfile ?? <String, dynamic>{};
     myUserId = (profile['_id'] ?? profile['id'] ?? '').toString();

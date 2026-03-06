@@ -4,6 +4,7 @@ import 'package:watch_team/session_data.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../routes.dart';
+import 'package:watch_team/services/worked_hours_service.dart';
 import '../main.dart';
 
 
@@ -15,6 +16,7 @@ class HomeDashboard extends StatefulWidget {
 }
 
 class _HomeDashboardState extends State<HomeDashboard> {
+
 
   bool isTorchOn = false;
   Future<void> _enableTorch(BuildContext context) async {
@@ -69,6 +71,8 @@ class _HomeDashboardState extends State<HomeDashboard> {
   // }
   // POP UP FOR LOGOUT
   Future<bool?> showLogoutDialog(BuildContext context) {
+
+
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -227,6 +231,21 @@ class _HomeDashboardState extends State<HomeDashboard> {
 
   @override
   Widget build(BuildContext context) {
+
+    final worked = WorkedHoursService.calculate();
+    print("this is the timing i am seeing now");
+    print(worked["daily"].inSeconds);
+    print("SECONDS => ${worked['daily'].inSeconds}");
+
+    final dailyText =
+    WorkedHoursService.formatHHMM(worked["daily"]);
+
+    final weeklyText =
+    WorkedHoursService.formatHHMM(worked["weekly"]);
+
+    final Map<int, Duration> byDay =
+    worked["byDay"];
+
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async {
@@ -246,7 +265,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-      
+
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -275,14 +294,14 @@ class _HomeDashboardState extends State<HomeDashboard> {
                               Column(
                                 children: [
                                   Text("Daily", style: TextStyle(color: Colors.white),),
-                                  Text("00:00",style: TextStyle(color: Colors.deepOrange,
+                                  Text(dailyText,style: TextStyle(color: Colors.deepOrange,
                                       fontWeight: FontWeight.bold, fontSize: 20), )
                                 ],
                               ),
                               Column(
                                 children: [
                                   Text("Weekly", style: TextStyle(color: Colors.white),),
-                                  Text("00:00",style: TextStyle(color: Colors.deepOrange,
+                                  Text(weeklyText,style: TextStyle(color: Colors.deepOrange,
                                       fontWeight: FontWeight.bold, fontSize: 20), )
                                 ],
                               ),
@@ -328,12 +347,12 @@ class _HomeDashboardState extends State<HomeDashboard> {
                       ),
                     ),
                   ),
-      
-      
+
+
                 ],
               ),
               // Charts
-      
+
                Padding(
                  padding: const EdgeInsets.all(5.0),
                  child: AspectRatio(
@@ -379,12 +398,12 @@ class _HomeDashboardState extends State<HomeDashboard> {
                                     if (index < 0 || index > 6) {
                                       return const SizedBox.shrink();
                                     }
-      
+
                                     // Today + index days
                                     final DateTime now = DateTime.now();
                                     final monday = getMonday(now);
                                     final DateTime date = monday.add(Duration(days: index));
-      
+
                                     final label = DateFormat('MMM d').format(date); // Example: "Nov 18"
                                     // e.g. "Nov 17"
                                     return Padding(
@@ -408,8 +427,8 @@ class _HomeDashboardState extends State<HomeDashboard> {
                     ),
                   ),
                ),
-      
-      
+
+
               // Bottom
               Expanded(
                 child: Container(
@@ -444,12 +463,12 @@ class _HomeDashboardState extends State<HomeDashboard> {
                           TableRow(
                               children: [
                                 InkWell(
-      
+
                                   onTap: (){
                                     print(isTorchOn);
                                     setState(() {
                                       _enableTorch(context);
-      
+
                                     });
                                   },
                                   child: Container(
@@ -479,7 +498,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                                 // IconsText(iconType: Icons.attractions_outlined, itemName: "Availability",),
                               ]
                           ),
-      
+
                         ]
                     ),
                   ),
@@ -488,7 +507,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
             ],
           ),
         ),
-      
+
       ),
     );
   }

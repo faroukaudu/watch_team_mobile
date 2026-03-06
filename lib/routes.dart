@@ -8,6 +8,7 @@ import 'screens/dashboard.dart';
 import 'screens/postsite_details.dart';
 import 'screens/scantag_screen.dart';
 import 'screens/post_order_screen.dart';
+import 'screens/chat_caller.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String send_reports = '/send_report';
   static const String scan_tags = '/scantag_screen';
   static const String post_order_screen = '/post_order_screen';
+  static const String chat = '/chat_callert';
 
   static Map<String, WidgetBuilder> routes = {
     splash: (context) => SplashScreen(),
@@ -29,6 +31,9 @@ class AppRoutes {
     sel_reports:(context) => SelectReportScreen(),
     post_order_screen:(context) => PostOrdersScreen(),
     scan_tags:(context) => ScanTagScreen(),
+    chat:(context) => ChatUserListScreen(),
+
+
 
     send_reports: (context) {
       final args = ModalRoute

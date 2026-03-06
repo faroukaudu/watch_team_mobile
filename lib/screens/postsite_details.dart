@@ -6,8 +6,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:watch_team/session_data.dart';
 import '../check_in.dart';
 import '../server_push.dart';
+import 'package:watch_team/services/live_location_manager.dart';
 import '../routes.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 // MAP SCREEN
@@ -73,9 +76,12 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
  void checkingIn () async{
    DateTime now = DateTime.now();
    final serverResponse = await CheckInOut.checkIntoServer(checkInTime: now.toString(),
+
        userData: SessionData.userProfile,
        // userData: postSitemap['clientName'],
        companyData: SessionData.companyInfo);
+   // ✅ start live tracking now
+   await LiveLocationManager.startLive();
    // 2️⃣ Simulate your long-running task (e.g., network call)
    await Future.delayed(const Duration(seconds: 3));
    // print("This is the Response Below");
@@ -102,8 +108,10 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
           userData: SessionData.userProfile,
           // userData: postSitemap['clientName'],
           checkoutTime: now.toString());
+      // ✅ stop live tracking now
+      await LiveLocationManager.stopLive();
       // 2️⃣ Simulate your long-running task (e.g., network call)
-      await Future.delayed(const Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 2));
       // print("This is the Response Below");
 
       final data =(serverResponse);

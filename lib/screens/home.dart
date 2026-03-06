@@ -4,6 +4,8 @@ import '../routes.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:watch_team/session_data.dart';
+import 'package:watch_team/global.dart' as g;
+import 'package:watch_team/services/worked_hours_service.dart';
 // import 'package:animations/animations.dart';
 
 // import 'package:flutter/material.dart';
@@ -420,7 +422,7 @@ class EmailForm extends StatelessWidget {
 
 Future signInRequest (email, password)async{
   // final url = Uri.parse('http://192.168.43.39:9000/guard-signin');
-  final url = Uri.parse('http://192.168.32.39:9000/guard-signin');
+  final url = Uri.parse('${g.baseUrl}/guard-signin');
 
   final response = await http.post(
     url,
@@ -453,7 +455,7 @@ Future signInRequest (email, password)async{
 Future<void> fetchUserProfile(String id) async {
   final response = await http.get(
     // Uri.parse('http://192.168.43.39:9000/guard-info?id=$id'),
-    Uri.parse('http://192.168.32.39:9000/guard-info?id=$id'),
+    Uri.parse('${g.baseUrl}/guard-info?id=$id'),
     // Uri.parse('https://watch-team.onrender.com/guard-info?id=$id'),
   );
 
