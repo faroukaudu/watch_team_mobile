@@ -21,13 +21,14 @@ class ApiClient {
   Future<String> createReport({
     required String title,
     required Map<String, dynamic> fields,
+    String? templateId,
   }) async {
     final res = await _dio.post('/reports', data: {
       'title': title,
       'fields': fields,
-      'userInfo':SessionData.userProfile,
-      'companyInfo':SessionData.companyInfo,
-      // 'checkedTimeID':SessionData.checkID
+      'templateId': templateId,
+      'userInfo': SessionData.userProfile,
+      'companyInfo': SessionData.companyInfo,
     });
 
     final data = res.data;
@@ -36,7 +37,7 @@ class ApiClient {
       if (rid != null && rid.toString().isNotEmpty && rid.toString() != 'null') {
         return rid.toString();
       }
-      // fallback if you ever change backend later
+
       final alt = data['id'] ?? data['_id'];
       if (alt != null && alt.toString().isNotEmpty && alt.toString() != 'null') {
         return alt.toString();
@@ -68,12 +69,16 @@ class ApiClient {
 
   Future<List<Map<String, dynamic>>> listReports({
     String q = '',
-    String scope = 'all', // 'all' or 'my'
+    String scope = 'all',
     String? userId,
   }) async {
+    final companyId =
+    (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+
     final res = await _dio.get('/reports', queryParameters: {
       'limit': 100,
       'scope': scope,
+      'companyId': companyId,
       if (q.trim().isNotEmpty) 'q': q.trim(),
       if (scope == 'my' && (userId ?? '').isNotEmpty) 'userId': userId,
     });
@@ -83,7 +88,6 @@ class ApiClient {
     return items.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-
   Future<Map<String, dynamic>> getReportById(String id) async {
     final res = await _dio.get('/reports/$id');
     final data = res.data;
@@ -92,13 +96,44 @@ class ApiClient {
       return Map<String, dynamic>.from(data['report'] as Map);
     }
 
-    // fallback if backend returns report directly
     if (data is Map && data['_id'] != null) {
       return Map<String, dynamic>.from(data as Map);
     }
 
     throw Exception('Unexpected response for GET /reports/$id: $data');
   }
+
+  Future<List<Map<String, dynamic>>> listReportTemplates() async {
+    final companyId =
+    (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+
+    final res = await _dio.get('/report-templates', queryParameters: {
+      'companyId': companyId,
+    });
+
+    final data = res.data as Map;
+    final items = (data['items'] as List).cast<dynamic>();
+    return items.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> getReportTemplate(String templateId) async {
+    final companyId =
+    (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+
+    final res = await _dio.get(
+      '/report-templates/$templateId',
+      queryParameters: {
+        'companyId': companyId,
+      },
+    );
+
+    final data = res.data as Map;
+
+    if (data['template'] is Map) {
+      return Map<String, dynamic>.from(data['template'] as Map);
+    }
+
+    throw Exception(
+        'Unexpected response for GET /report-templates/$templateId');
+  }
 }
-
-

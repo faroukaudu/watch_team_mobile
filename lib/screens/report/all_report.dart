@@ -1,9 +1,9 @@
 // lib/screens/report/all_report.dart
 import 'package:flutter/material.dart';
+import 'package:watch_team/global.dart' as g;
+import 'package:watch_team/screens/report/report_detail_screen.dart';
 import 'package:watch_team/services/api_client.dart';
 import 'package:watch_team/session_data.dart';
-import 'package:watch_team/screens/report/report_detail_screen.dart';
-import 'package:watch_team/global.dart' as g;
 
 class AllReports extends StatefulWidget {
   const AllReports({super.key});
@@ -13,11 +13,6 @@ class AllReports extends StatefulWidget {
 }
 
 class _AllReportsState extends State<AllReports> {
-
-  Future<void> _onRefresh() async {
-    await loadReports();
-  }
-
   int tabIndex = 0; // 0 = All, 1 = My
   bool loading = true;
 
@@ -31,13 +26,16 @@ class _AllReportsState extends State<AllReports> {
   void initState() {
     super.initState();
 
-    // ✅ Your backend IP
     api = ApiClient(baseUrl: '${g.baseUrl}');
 
     final profile = SessionData.userProfile ?? <String, dynamic>{};
     myUserId = (profile['_id'] ?? profile['id'] ?? '').toString();
 
     loadReports();
+  }
+
+  Future<void> _onRefresh() async {
+    await loadReports();
   }
 
   Future<void> loadReports({String q = ''}) async {
@@ -51,14 +49,52 @@ class _AllReportsState extends State<AllReports> {
           ? []
           : await api.listReports(q: q, scope: 'my', userId: myUserId);
 
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load reports: $e')),
       );
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  _Badge _badgeForCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'standard':
+        return const _Badge('STANDARD', Color(0xFF00C853));
+      case 'incident':
+        return const _Badge('INCIDENT', Color(0xFFFF9800));
+      case 'general':
+        return const _Badge('GENERAL', Color(0xFF9E9E9E));
+      case 'log':
+        return const _Badge('LOG', Color(0xFF607D8B));
+      case 'nfc':
+        return const _Badge('NFC', Color(0xFF9C27B0));
+      default:
+        return const _Badge('GENERAL', Color(0xFF9E9E9E));
+    }
+  }
+
+  String _displayTypeFromCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'standard':
+        return 'Standard Report';
+      case 'incident':
+        return 'Incident Report';
+      case 'general':
+        return 'General Report';
+      case 'log':
+        return 'Log Report';
+      case 'nfc':
+        return 'NFC Report';
+      default:
+        return 'General Report';
     }
   }
 
@@ -96,7 +132,6 @@ class _AllReportsState extends State<AllReports> {
             ),
           ),
         ),
-
         body: RefreshIndicator(
           color: const Color(0xFFFF4D4D),
           backgroundColor: const Color(0xFF171717),
@@ -109,7 +144,7 @@ class _AllReportsState extends State<AllReports> {
               Center(child: CircularProgressIndicator()),
             ],
           )
-              : (data.isEmpty)
+              : data.isEmpty
               ? ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: const [
@@ -126,14 +161,17 @@ class _AllReportsState extends State<AllReports> {
               final id = (r['_id'] ?? '').toString();
               final title = (r['title'] ?? 'Report').toString();
               final createdAt = (r['createdAt'] ?? '').toString();
+              final category =
+              (r['category'] ?? 'general').toString();
 
-              final badge = _badgeForTitle(title);
+              final badge = _badgeForCategory(category);
+              final reportType = _displayTypeFromCategory(category);
 
               return _ReportCard(
                 title: title,
                 createdAtIso: createdAt,
                 badge: badge,
-                incidentType: _incidentTypeFromTitle(title),
+                reportType: reportType,
                 onTap: () async {
                   if (id.isEmpty) return;
 
@@ -148,15 +186,12 @@ class _AllReportsState extends State<AllReports> {
                     ),
                   );
 
-                  // refresh when coming back
                   loadReports();
                 },
               );
             },
           ),
         ),
-
-
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
           child: SizedBox(
@@ -184,34 +219,11 @@ class _AllReportsState extends State<AllReports> {
       ),
     );
   }
-
-  static _Badge _badgeForTitle(String title) {
-    final t = title.toLowerCase();
-    if (t.contains('break') || t.contains('incident')) {
-      return const _Badge('INCIDENT', Color(0xFFFF3D00));
-    }
-    if (t.contains('fire') || t.contains('incident')) {
-      return const _Badge('INCIDENT', Color(0xFFFF3D00));
-    }
-    if (t.contains('inspection') || t.contains('hourly')) {
-      return const _Badge('STANDARD', Color(0xFF00C853));
-    }
-    return const _Badge('GENERAL', Color(0xFF9E9E9E));
-  }
-
-  static String _incidentTypeFromTitle(String title) {
-    final t = title.toLowerCase();
-
-    if (t.contains('break') || t.contains('incident')) return 'Incident Report';
-    if (t.contains('inspection')) return 'Inspection Report';
-    if (t.contains('hourly')) return 'Hourly Report';
-
-    return 'General Report';
-  }
 }
 
 class _TabsPill extends StatelessWidget {
   final ValueChanged<int> onTabChanged;
+
   const _TabsPill({required this.onTabChanged});
 
   @override
@@ -232,9 +244,14 @@ class _TabsPill extends StatelessWidget {
           color: Colors.black,
           borderRadius: BorderRadius.circular(8),
         ),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        unselectedLabelStyle:
-        const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
         labelColor: const Color(0xFFFF4D4D),
         unselectedLabelColor: Colors.white,
         tabs: const [
@@ -264,16 +281,37 @@ class _ReportCard extends StatelessWidget {
   final String title;
   final String createdAtIso;
   final _Badge badge;
-  final String incidentType;
+  final String reportType;
   final VoidCallback onTap;
 
   const _ReportCard({
     required this.title,
     required this.createdAtIso,
     required this.badge,
-    required this.incidentType,
+    required this.reportType,
     required this.onTap,
   });
+
+  Color _badgeBackground(Color color, String text) {
+    if (text.toLowerCase() == 'general') {
+      return const Color(0xFF1A1A1A);
+    }
+    return color.withOpacity(0.16);
+  }
+
+  Color _badgeBorder(Color color, String text) {
+    if (text.toLowerCase() == 'general') {
+      return const Color(0xFF3A3A3A);
+    }
+    return color.withOpacity(0.55);
+  }
+
+  Color _badgeText(Color color, String text) {
+    if (text.toLowerCase() == 'general') {
+      return Colors.white;
+    }
+    return color;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +320,7 @@ class _ReportCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
@@ -293,61 +332,76 @@ class _ReportCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // TITLE + BADGE
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Text(
                     title,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
+                      height: 1.25,
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: badge.color.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: badge.color),
-                  ),
-                  child: Text(
-                    badge.text,
-                    style: TextStyle(
-                      color: badge.color,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _badgeBackground(badge.color, badge.text),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: _badgeBorder(badge.color, badge.text),
+                      ),
+                    ),
+                    child: Text(
+                      badge.text,
+                      style: TextStyle(
+                        color: _badgeText(badge.color, badge.text),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 10),
-
-            // incident type + time
             Row(
               children: [
-                Icon(Icons.local_offer,
-                    size: 16, color: Colors.white.withOpacity(0.65)),
+                Icon(
+                  Icons.local_offer,
+                  size: 16,
+                  color: Colors.white.withOpacity(0.65),
+                ),
                 const SizedBox(width: 6),
-                Text(
-                  incidentType,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.75),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                Expanded(
+                  child: Text(
+                    reportType,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.75),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                Icon(Icons.schedule,
-                    size: 16, color: Colors.white.withOpacity(0.65)),
+                const SizedBox(width: 10),
+                Icon(
+                  Icons.schedule,
+                  size: 16,
+                  color: Colors.white.withOpacity(0.65),
+                ),
                 const SizedBox(width: 6),
                 Text(
                   when,
@@ -376,5 +430,6 @@ class _ReportCard extends StatelessWidget {
 class _Badge {
   final String text;
   final Color color;
+
   const _Badge(this.text, this.color);
 }

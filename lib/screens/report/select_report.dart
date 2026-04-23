@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:watch_team/global.dart' as g;
 import 'package:watch_team/screens/report/send_report.dart';
+import 'package:watch_team/services/api_client.dart';
 
-/// Select Report screen with a working search bar (filters by report title).
 class SelectReportScreen extends StatefulWidget {
   const SelectReportScreen({super.key});
 
@@ -10,61 +11,13 @@ class SelectReportScreen extends StatefulWidget {
 }
 
 class _SelectReportScreenState extends State<SelectReportScreen> {
+  static final String baseUrl = '${g.baseUrl}';
+  static const String apiPrefix = '';
+
   final TextEditingController _searchCtrl = TextEditingController();
 
-  final List<ReportItem> _allReports = const [
-    ReportItem(
-      title: 'Break-In',
-      subtitle: 'This report covers break-in incident.',
-      type: ReportType.incident,
-    ),
-    ReportItem(
-      title: 'Detailed Incident Report',
-      subtitle: 'Detailed Incident Report',
-      type: ReportType.incident,
-    ),
-    ReportItem(
-      title: 'Equipment Inspection Report',
-      subtitle: 'Equipment Inspection Report',
-      type: ReportType.standard,
-    ),
-    ReportItem(
-      title: 'Fire Alarm',
-      subtitle: 'This report is created to address fire alarm.',
-      type: ReportType.incident,
-    ),
-    ReportItem(
-      title: 'General Incident report',
-      subtitle: 'General incident report with an option to select any incident',
-      type: ReportType.incident,
-    ),
-    ReportItem(
-      title: 'Hourly Report',
-      subtitle: 'Hourly Report',
-      type: ReportType.standard,
-    ),
-    ReportItem(
-      title: 'Parking Violation',
-      subtitle: 'This report is used to check for parking Violation',
-      type: ReportType.incident,
-    ),
-    ReportItem(
-      title: 'Police On Site',
-      subtitle: 'This cover the Police Report',
-      type: ReportType.incident,
-    ),
-    ReportItem(
-      title: 'Trespassing',
-      subtitle: 'This report shows Trespassing Incidents',
-      type: ReportType.incident,
-    ),
-    ReportItem(
-      title: 'Vehicle Inspection Report',
-      subtitle: 'Shows Report of the Vehicle Inspected',
-      type: ReportType.standard,
-    ),
-  ];
-
+  List<Map<String, dynamic>> _templates = [];
+  bool _loading = true;
   String _query = '';
 
   @override
@@ -73,6 +26,26 @@ class _SelectReportScreenState extends State<SelectReportScreen> {
     _searchCtrl.addListener(() {
       setState(() => _query = _searchCtrl.text.trim());
     });
+    _loadTemplates();
+  }
+
+  Future<void> _loadTemplates() async {
+    try {
+      final api = ApiClient(baseUrl: baseUrl, apiPrefix: apiPrefix);
+      final items = await api.listReportTemplates();
+
+      if (!mounted) return;
+      setState(() {
+        _templates = items;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load templates: $e')),
+      );
+    }
   }
 
   @override
@@ -81,10 +54,22 @@ class _SelectReportScreenState extends State<SelectReportScreen> {
     super.dispose();
   }
 
-  List<ReportItem> get _filtered {
-    if (_query.isEmpty) return _allReports;
+  List<Map<String, dynamic>> get _filteredTemplates {
+    if (_query.isEmpty) return _templates;
     final q = _query.toLowerCase();
-    return _allReports.where((r) => r.title.toLowerCase().contains(q)).toList();
+
+    return _templates.where((t) {
+      final title = (t['title'] ?? '').toString().toLowerCase();
+      final description = (t['description'] ?? '').toString().toLowerCase();
+      final category = (t['category'] ?? '').toString().toLowerCase();
+      return title.contains(q) || description.contains(q) || category.contains(q);
+    }).toList();
+  }
+
+  String _subtitleFor(Map<String, dynamic> item) {
+    final description = (item['description'] ?? '').toString().trim();
+    if (description.isNotEmpty) return description;
+    return 'Tap to open this report template.';
   }
 
   @override
@@ -101,7 +86,10 @@ class _SelectReportScreenState extends State<SelectReportScreen> {
         centerTitle: true,
         title: const Text(
           'Select Report',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: SafeArea(
@@ -115,22 +103,32 @@ class _SelectReportScreenState extends State<SelectReportScreen> {
               ),
               const SizedBox(height: 14),
               Expanded(
-                child: _filtered.isEmpty
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _filteredTemplates.isEmpty
                     ? const _EmptyResult()
                     : ListView.separated(
                   padding: const EdgeInsets.only(bottom: 12),
-                  itemCount: _filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  itemCount: _filteredTemplates.length,
+                  separatorBuilder: (_, __) =>
+                  const SizedBox(height: 14),
                   itemBuilder: (context, index) {
-                    final item = _filtered[index];
-                    return ReportCard(
-                      item: item,
+                    final item = _filteredTemplates[index];
+
+                    return _TemplateCard(
+                      title: (item['title'] ?? '').toString(),
+                      subtitle: _subtitleFor(item),
+                      category: (item['category'] ?? 'general').toString(),
                       onTap: () {
-                        // TODO: return selected report or navigate
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ReportFormScreen(reportTitle: item.title),
+                            builder: (_) => ReportFormScreen(
+                              reportTitle:
+                              (item['title'] ?? '').toString(),
+                              templateId:
+                              (item['_id'] ?? '').toString(),
+                            ),
                           ),
                         );
                       },
@@ -163,13 +161,6 @@ class _SearchBar extends StatelessWidget {
         color: Colors.black,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFF2A2A2A)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -180,10 +171,14 @@ class _SearchBar extends StatelessWidget {
               cursorColor: Colors.white,
               decoration: InputDecoration(
                 hintText: 'Search here...',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.35)),
+                hintStyle: TextStyle(
+                  color: Colors.white.withOpacity(0.35),
+                ),
                 border: InputBorder.none,
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
             ),
           ),
@@ -197,8 +192,6 @@ class _SearchBar extends StatelessWidget {
             child: IconButton(
               icon: const Icon(Icons.search, color: Colors.black),
               onPressed: () {
-                // Search is already live via listener.
-                // This button can optionally close keyboard:
                 FocusManager.instance.primaryFocus?.unfocus();
               },
             ),
@@ -209,93 +202,133 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class ReportCard extends StatelessWidget {
-  final ReportItem item;
+class _TemplateCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String category;
   final VoidCallback onTap;
 
-  const ReportCard({super.key, required this.item, required this.onTap});
+  const _TemplateCard({
+    required this.title,
+    required this.subtitle,
+    required this.category,
+    required this.onTap,
+  });
+
+  Color _categoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'standard':
+        return Colors.green;
+      case 'incident':
+        return Colors.orange;
+      case 'general':
+        return Colors.black;
+      case 'log':
+        return Colors.blueGrey;
+      case 'nfc':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _categoryBackground(String category) {
+    switch (category.toLowerCase()) {
+      case 'general':
+        return const Color(0xFF1A1A1A);
+      default:
+        return _categoryColor(category).withOpacity(0.15);
+    }
+  }
+
+  Color _categoryTextColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'general':
+        return Colors.white;
+      default:
+        return _categoryColor(category);
+    }
+  }
+
+  Color _categoryBorderColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'general':
+        return const Color(0xFF3A3A3A);
+      default:
+        return _categoryColor(category).withOpacity(0.45);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final chip = _TypeChip(type: item.type);
+    final badgeBg = _categoryBackground(category);
+    final badgeText = _categoryTextColor(category);
+    final badgeBorder = _categoryBorderColor(category);
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2B2F35),
+          color: const Color(0xFF151515),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          border: Border.all(color: const Color(0xFF2A2A2A)),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.title,
+                    title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w700,
                       fontSize: 16,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    item.subtitle,
+                    subtitle,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
-                      fontSize: 13.5,
-                      height: 1.25,
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 13,
+                      height: 1.3,
                     ),
                   ),
+                  const SizedBox(height: 10),
+
                 ],
               ),
             ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: badgeBorder),
+              ),
+              child: Text(
+                category.toUpperCase(),
+                style: TextStyle(
+                  color: badgeText,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
             const SizedBox(width: 12),
-            chip,
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white54,
+              size: 18,
+            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TypeChip extends StatelessWidget {
-  final ReportType type;
-
-  const _TypeChip({required this.type});
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isIncident = type == ReportType.incident;
-
-    final bg = isIncident ? const Color(0xFFF1C6C9) : const Color(0xFF0F3B3A);
-    final fg = isIncident ? const Color(0xFF7A1C22) : const Color(0xFF69C1B8);
-    final text = isIncident ? 'Incident' : 'Standard';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          fontSize: 12.5,
         ),
       ),
     );
@@ -309,23 +342,9 @@ class _EmptyResult extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        'No reports match your search.',
+        'No report template found.',
         style: TextStyle(color: Colors.white.withOpacity(0.7)),
       ),
     );
   }
-}
-
-enum ReportType { incident, standard }
-
-class ReportItem {
-  final String title;
-  final String subtitle;
-  final ReportType type;
-
-  const ReportItem({
-    required this.title,
-    required this.subtitle,
-    required this.type,
-  });
 }

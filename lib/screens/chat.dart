@@ -63,28 +63,25 @@ class _ChatPageState extends State<ChatPage> {
 
     _socket!.on("message:new", (data) {
       final map = _asMap(data);
-
-      // Build ChatMessage using your existing model
       final msg = ChatMessage.fromJson(map);
 
-      // Only accept messages for this chat
       if (msg.chatId != widget.chatId) return;
 
       setState(() {
-        // If this is my message coming back, server includes tempId
         final tempId = (map["tempId"] ?? "").toString();
 
         if (tempId.isNotEmpty) {
-          // replace pending local message whose id == tempId
           final idx = _messages.indexWhere((m) => m.id == tempId && m.pending);
           if (idx != -1) {
-            _messages[idx] = msg; // replace pending with server msg
+            _messages[idx] = msg;
             return;
           }
         }
 
-        // otherwise append
-        _messages.add(msg);
+        final alreadyExists = _messages.any((m) => m.id == msg.id);
+        if (!alreadyExists) {
+          _messages.add(msg);
+        }
       });
 
       _scrollToBottom();
@@ -128,8 +125,9 @@ class _ChatPageState extends State<ChatPage> {
 
     _controller.clear();
 
-    // temp message while waiting for server
-    final tempId = "${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(9999)}";
+    final tempId =
+        "${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(9999)}";
+
     final temp = ChatMessage(
       id: tempId,
       chatId: widget.chatId,
@@ -148,29 +146,12 @@ class _ChatPageState extends State<ChatPage> {
       ack: (ack) {
         final a = _asMap(ack);
 
-        // If server responded ok, we can stop pending right away.
-        if (a["ok"] == true && a["message"] != null) {
-          final serverMap = _asMap(a["message"]);
-          final serverMsg = ChatMessage.fromJson(serverMap);
-
-          if (serverMsg.chatId != widget.chatId) return;
-
+        // Only handle failure here.
+        // Success should be handled by "message:new" to avoid duplicates.
+        if (a["ok"] != true) {
           setState(() {
             final idx = _messages.indexWhere((m) => m.id == tempId && m.pending);
             if (idx != -1) {
-              _messages[idx] = serverMsg; // replace pending
-            } else {
-              _messages.add(serverMsg);
-            }
-          });
-
-          _scrollToBottom();
-        } else {
-          // If failed: just remove pending or stop pending indicator
-          setState(() {
-            final idx = _messages.indexWhere((m) => m.id == tempId && m.pending);
-            if (idx != -1) {
-              // easiest: remove it, or keep it but stop pending
               final old = _messages[idx];
               _messages[idx] = ChatMessage(
                 id: old.id,
@@ -185,8 +166,6 @@ class _ChatPageState extends State<ChatPage> {
         }
       },
     );
-
-
   }
 
   @override
@@ -260,7 +239,11 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
+
+
 class _Bubble extends StatelessWidget {
+
+
   final String text;
   final bool isMe;
   final bool pending;
@@ -273,10 +256,12 @@ class _Bubble extends StatelessWidget {
     required this.time,
   });
 
+
   @override
   Widget build(BuildContext context) {
     final bg = isMe ? Colors.blue.shade600 : Colors.grey.shade300;
     final fg = isMe ? Colors.white : Colors.black87;
+    final localTime = time.toLocal();
 
     final radius = BorderRadius.only(
       topLeft: const Radius.circular(14),
@@ -297,14 +282,17 @@ class _Bubble extends StatelessWidget {
           children: [
             Text(text, style: TextStyle(color: fg, fontSize: 15)),
             const SizedBox(height: 4),
+
             Opacity(
               opacity: 0.7,
+
               child: Text(
-                "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}"
+                "${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}"
                     "${pending ? " • sending…" : ""}",
                 style: TextStyle(color: fg, fontSize: 11),
+              )
               ),
-            )
+
           ],
         ),
       ),

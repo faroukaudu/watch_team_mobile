@@ -47,7 +47,7 @@ class _UsersPageState extends State<UsersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Usersss")),
+      // appBar: AppBar(title: const Text("Usersss")),
       body: FutureBuilder<List<AppUser>>(
         future: _future,
         builder: (ctx, snap) {
@@ -80,20 +80,29 @@ class _UsersPageState extends State<UsersPage> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 onTap: () async {
-                  final chatId = await widget.api.getOrCreateDirectChat(otherUserId: u.id);
-                  if (!mounted) return;
+                  try {
+                    final chatId =
+                    await widget.api.getOrCreateDirectChat(otherUserId: u.id);
 
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatPage(
-                        api: widget.api,
-                        myUserId: widget.myUserId,
-                        otherUser: u,
-                        chatId: chatId,
+                    if (!mounted) return;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatPage(
+                          api: widget.api,
+                          myUserId: widget.myUserId,
+                          otherUser: u,
+                          chatId: chatId,
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Failed to open chat: $e")),
+                    );
+                  }
                 },
               );
 

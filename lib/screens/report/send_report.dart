@@ -1,37 +1,45 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'package:watch_team/session_data.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:watch_team/global.dart' as g;
+import 'package:watch_team/session_data.dart';
 
 import '../../models/attachment.dart';
 import '../../services/api_client.dart';
-import '../../services/cloudinary_uploader.dart';
+import '../../services/audio_rec_ser.dart';
 import '../../services/bytes_to_file.dart';
-
+import '../../services/cloudinary_uploader.dart';
+import '../../services/gallery_picker_ser.dart';
+import '../../services/media_capture_service.dart';
 import '../../widgets/attachments_bar.dart';
 import '../../widgets/media_option_sheet.dart';
-import '../../services/media_capture_service.dart';
-import '../../services/gallery_picker_ser.dart';
-import '../../services/audio_rec_ser.dart';
-
 import '../media/audio_record_scrn.dart';
 import 'signature_screen.dart';
-import 'package:watch_team/global.dart' as g;
 
-enum FieldType { dropdown, date, text, textarea, radio, signature }
+enum FieldType {
+  dropdown,
+  date,
+  text,
+  textarea,
+  radio,
+  number,
+  time,
+  checkbox,
+  signature
+}
 
 class FormFieldDef {
   final String keyName;
   final String label;
   final FieldType type;
-
   final bool aiBadge;
   final List<String>? options;
   final String? hint;
   final int maxLines;
+  final bool required;
 
   const FormFieldDef({
     required this.keyName,
@@ -41,6 +49,7 @@ class FormFieldDef {
     this.options,
     this.hint,
     this.maxLines = 1,
+    this.required = false,
   });
 }
 
@@ -56,8 +65,8 @@ class ReportFormSchema {
   });
 }
 
-/// --- SCHEMAS (keep yours, this is same pattern you already have) ---
-/// (This is directly based on your uploaded code. :contentReference[oaicite:1]{index=1})
+/// Fallback schemas for older hardcoded reports.
+/// Signature is added automatically later, so it is excluded here.
 ReportFormSchema schemaForTitle(String reportTitle) {
   switch (reportTitle.trim().toLowerCase()) {
     case 'break-in':
@@ -101,39 +110,35 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             keyName: 'witness_name',
             label: 'IF YES, NAME THE WITNESS',
             type: FieldType.textarea,
-            hint: 'witness',
+            hint: 'Witness',
             maxLines: 2,
             aiBadge: true,
           ),
           FormFieldDef(
             keyName: 'item_stolen',
-            label: 'LIST ANY ITEMS THAT WERE TAKEN ',
+            label: 'LIST ANY ITEMS THAT WERE TAKEN',
             type: FieldType.textarea,
             hint: 'Stolen Items',
             maxLines: 4,
             aiBadge: true,
           ),
           FormFieldDef(
-            keyName: 'NARRATIVE',
-            label: 'Narrative',
+            keyName: 'narrative',
+            label: 'NARRATIVE',
             type: FieldType.textarea,
             hint: 'Narrative',
             maxLines: 4,
             aiBadge: true,
           ),
-          FormFieldDef(
-            keyName: 'signature',
-            label: 'SIGNATURE *',
-            type: FieldType.signature,
-          ),
         ],
       );
+
     case 'fire alarm':
     case 'fire-alarm':
     case 'fire alert':
     case 'fire alarm alert':
-      return ReportFormSchema(
-        title: reportTitle,
+      return const ReportFormSchema(
+        title: 'Fire Alarm',
         showFabMenu: true,
         fields: [
           FormFieldDef(
@@ -168,20 +173,13 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             type: FieldType.radio,
             options: ['Yes', 'No'],
           ),
-          FormFieldDef(
-            keyName: 'signature',
-            label: 'SIGNATURE *',
-            type: FieldType.signature,
-          ),
         ],
       );
 
-    case 'Detailed Incident Report':
     case 'detailed incident report':
-    case 'Detailed-Incident-Report':
     case 'detailed-incident-report':
-      return ReportFormSchema(
-        title: reportTitle,
+      return const ReportFormSchema(
+        title: 'Detailed Incident Report',
         showFabMenu: true,
         fields: [
           FormFieldDef(
@@ -189,10 +187,27 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             label: 'SELECT INCIDENTS',
             type: FieldType.dropdown,
             hint: 'Select Incident',
-            options: ['Abandon Vehicle', 'Accident', 'Arson',
-              'Assult','Collision', 'Disturbance', 'EMT Onsite', 'Injury','Item Lost',
-              'Maintenance','Parking Violation', 'Police Onsite','Robbery','Threat','Theft',
-            'Trespassing','Vandalism','Violation','Weather'],
+            options: [
+              'Abandon Vehicle',
+              'Accident',
+              'Arson',
+              'Assult',
+              'Collision',
+              'Disturbance',
+              'EMT Onsite',
+              'Injury',
+              'Item Lost',
+              'Maintenance',
+              'Parking Violation',
+              'Police Onsite',
+              'Robbery',
+              'Threat',
+              'Theft',
+              'Trespassing',
+              'Vandalism',
+              'Violation',
+              'Weather',
+            ],
           ),
           FormFieldDef(
             keyName: 'incident_date',
@@ -273,7 +288,7 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             keyName: 'why_no_police',
             label: 'IF NOT WHY?',
             type: FieldType.textarea,
-            hint: 'if Not Why?',
+            hint: 'If not, why?',
             maxLines: 3,
             aiBadge: true,
           ),
@@ -281,7 +296,7 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             keyName: 'police_names',
             label: 'POLICE NAME(S)',
             type: FieldType.textarea,
-            hint: 'police Name',
+            hint: 'Police Name',
             maxLines: 3,
             aiBadge: true,
           ),
@@ -301,30 +316,15 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             maxLines: 3,
             aiBadge: true,
           ),
-
-          FormFieldDef(
-            keyName: 'signature',
-            label: 'SIGNATURE *',
-            type: FieldType.signature,
-          ),
         ],
       );
 
-    case 'Equipment Inspection Report':
     case 'equipment inspection report':
-    case 'Equipment-Inspection-Report':
-    // case 'detailed-incident-report':
-      return ReportFormSchema(
-        title: reportTitle,
+    case 'equipment-inspection-report':
+      return const ReportFormSchema(
+        title: 'Equipment Inspection Report',
         showFabMenu: true,
         fields: [
-
-          // FormFieldDef(
-          //   keyName: 'report_date',
-          //   label: 'DATE OF THE REPORT',
-          //   type: FieldType.date,
-          // ),
-
           FormFieldDef(
             keyName: 'equipment_type',
             label: 'EQUIPMENT TYPE',
@@ -337,7 +337,7 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             keyName: 'reading',
             label: 'READING',
             type: FieldType.textarea,
-            hint: 'reading',
+            hint: 'Reading',
             maxLines: 3,
             aiBadge: true,
           ),
@@ -357,30 +357,15 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             maxLines: 3,
             aiBadge: true,
           ),
-
-          FormFieldDef(
-            keyName: 'signature',
-            label: 'SIGNATURE *',
-            type: FieldType.signature,
-          ),
         ],
       );
 
-    case 'Parking Violation':
     case 'parking violation':
-    case 'Parking-Violation':
-    // case 'detailed-incident-report':
-      return ReportFormSchema(
-        title: reportTitle,
+    case 'parking-violation':
+      return const ReportFormSchema(
+        title: 'Parking Violation',
         showFabMenu: true,
         fields: [
-
-          // FormFieldDef(
-          //   keyName: 'report_date',
-          //   label: 'DATE OF THE REPORT',
-          //   type: FieldType.date,
-          // ),
-
           FormFieldDef(
             keyName: 'violator_name',
             label: 'VIOLATOR NAME',
@@ -401,7 +386,7 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             keyName: 'model',
             label: 'MODEL',
             type: FieldType.textarea,
-            hint: 'Notes',
+            hint: 'Model',
             maxLines: 3,
             aiBadge: true,
           ),
@@ -409,7 +394,7 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             keyName: 'lp',
             label: 'LP',
             type: FieldType.textarea,
-            hint: 'lp',
+            hint: 'LP',
             maxLines: 3,
             aiBadge: true,
           ),
@@ -417,25 +402,18 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             keyName: 'color',
             label: 'COLOR',
             type: FieldType.textarea,
-            hint: 'color',
+            hint: 'Color',
             maxLines: 3,
             aiBadge: true,
-          ),
-
-          FormFieldDef(
-            keyName: 'signature',
-            label: 'SIGNATURE *',
-            type: FieldType.signature,
           ),
         ],
       );
 
-
     default:
-      return ReportFormSchema(
-        title: reportTitle,
+      return const ReportFormSchema(
+        title: 'Report',
         showFabMenu: true,
-        fields: const [
+        fields: [
           FormFieldDef(
             keyName: 'incident_date',
             label: 'DATE',
@@ -448,11 +426,6 @@ ReportFormSchema schemaForTitle(String reportTitle) {
             hint: 'Enter details...',
             maxLines: 5,
           ),
-          FormFieldDef(
-            keyName: 'signature',
-            label: 'SIGNATURE *',
-            type: FieldType.signature,
-          ),
         ],
       );
   }
@@ -460,26 +433,27 @@ ReportFormSchema schemaForTitle(String reportTitle) {
 
 class ReportFormScreen extends StatefulWidget {
   final String reportTitle;
-  const ReportFormScreen({super.key, required this.reportTitle});
+  final String? templateId;
+
+  const ReportFormScreen({
+    super.key,
+    required this.reportTitle,
+    this.templateId,
+  });
 
   @override
   State<ReportFormScreen> createState() => _ReportFormScreenState();
 }
 
 class _ReportFormScreenState extends State<ReportFormScreen> {
-  // ==== CONFIG ====
-
-
-  // IMPORTANT:
-  // - If you're testing on a real phone, your base URL must be your PC LAN IP.
-  // - If your Node app mounts routes under /api, set apiPrefix = '/api'.
   static final String baseUrl = '${g.baseUrl}';
-  static const String apiPrefix = ''; // e.g. '/api'
+  static const String apiPrefix = '';
 
   bool submitting = false;
   double uploadProgress = 0.0;
 
-  late final ReportFormSchema schema;
+  ReportFormSchema? schema;
+  bool loadingSchema = true;
 
   final Map<String, dynamic> values = {};
   final Map<String, TextEditingController> controllers = {};
@@ -493,20 +467,119 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   final List<Attachment> attachments = [];
 
   Map<String, dynamic>? profile;
+
   @override
   void initState() {
-    profile = SessionData.userProfile;
     super.initState();
-    schema = schemaForTitle(widget.reportTitle);
+    profile = SessionData.userProfile;
+    _loadSchema();
+  }
 
-    for (final f in schema.fields) {
-      if (f.type == FieldType.date) {
-        values[f.keyName] = DateTime.now();
-      } else if (f.type == FieldType.text || f.type == FieldType.textarea) {
-        controllers[f.keyName] = TextEditingController();
+  Future<void> _loadSchema() async {
+    try {
+      final api = ApiClient(
+        baseUrl: baseUrl,
+        apiPrefix: apiPrefix,
+      );
+
+      if ((widget.templateId ?? '').isNotEmpty) {
+        final tpl = await api.getReportTemplate(widget.templateId!);
+        final fieldsRaw = (tpl['fields'] as List?) ?? [];
+
+        final parsedFields = fieldsRaw.map((e) {
+          final f = Map<String, dynamic>.from(e as Map);
+          final type = _fieldTypeFromString((f['type'] ?? 'text').toString());
+
+          return FormFieldDef(
+            keyName: (f['keyName'] ?? '').toString(),
+            label: (f['label'] ?? '').toString(),
+            type: type,
+            hint: (f['placeholder'] ?? f['hint'] ?? '').toString(),
+            options:
+            ((f['options'] ?? []) as List).map((x) => x.toString()).toList(),
+            maxLines: type == FieldType.textarea ? 4 : 1,
+            required: f['required'] == true,
+          );
+        }).toList();
+
+        parsedFields.add(
+          const FormFieldDef(
+            keyName: 'signature',
+            label: 'SIGNATURE *',
+            type: FieldType.signature,
+            required: true,
+          ),
+        );
+
+        schema = ReportFormSchema(
+          title: (tpl['title'] ?? widget.reportTitle).toString(),
+          fields: parsedFields,
+          showFabMenu: tpl['showFabMenu'] != false,
+        );
       } else {
-        values[f.keyName] = null;
+        final fallback = schemaForTitle(widget.reportTitle);
+
+        final fields = List<FormFieldDef>.from(
+          fallback.fields.where((f) => f.type != FieldType.signature),
+        )..add(
+          const FormFieldDef(
+            keyName: 'signature',
+            label: 'SIGNATURE *',
+            type: FieldType.signature,
+            required: true,
+          ),
+        );
+
+        schema = ReportFormSchema(
+          title: fallback.title,
+          fields: fields,
+          showFabMenu: fallback.showFabMenu,
+        );
       }
+
+      for (final f in schema!.fields) {
+        if (f.type == FieldType.date) {
+          values[f.keyName] = DateTime.now();
+        } else if (f.type == FieldType.text ||
+            f.type == FieldType.textarea ||
+            f.type == FieldType.number ||
+            f.type == FieldType.time) {
+          controllers[f.keyName] = TextEditingController();
+        } else {
+          values[f.keyName] = null;
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load template: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => loadingSchema = false);
+      }
+    }
+  }
+
+  FieldType _fieldTypeFromString(String type) {
+    switch (type.toLowerCase()) {
+      case 'dropdown':
+        return FieldType.dropdown;
+      case 'date':
+        return FieldType.date;
+      case 'textarea':
+        return FieldType.textarea;
+      case 'radio':
+        return FieldType.radio;
+      case 'number':
+        return FieldType.number;
+      case 'time':
+        return FieldType.time;
+      case 'checkbox':
+        return FieldType.checkbox;
+      case 'text':
+      default:
+        return FieldType.text;
     }
   }
 
@@ -518,7 +591,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     super.dispose();
   }
 
-  // Convert to JSON-safe (you already had this idea; keep it)
   Map<String, dynamic> makeJsonSafeMap(Map<String, dynamic> input) {
     dynamic convert(dynamic v) {
       if (v == null) return null;
@@ -532,17 +604,12 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       if (v is List) {
         return v.map(convert).toList();
       }
-
       if (v is String || v is num || v is bool) return v;
-
-      // Never crash: stringify unknown values
       return v.toString();
     }
 
     return input.map((k, v) => MapEntry(k, convert(v)));
   }
-
-  // =================== MEDIA PICKERS ===================
 
   Future<void> _openAttachmentChooser(BuildContext context) async {
     await showModalBottomSheet(
@@ -608,7 +675,13 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           children: [
             Icon(icon, color: Colors.white70),
             const SizedBox(width: 12),
-            Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -625,13 +698,16 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       onLeft: () async {
         final f = await mediaCapture.captureImageFromCamera();
         if (f != null) {
-          setState(() => attachments.add(Attachment(type: AttachmentType.image, file: f)));
+          setState(
+                () => attachments.add(Attachment(type: AttachmentType.image, file: f)),
+          );
         }
       },
       onRight: () async {
         final picked = await galleryPicker.pickImagesMax5(context);
 
-        final currentImages = attachments.where((a) => a.type == AttachmentType.image).length;
+        final currentImages =
+            attachments.where((a) => a.type == AttachmentType.image).length;
         final remaining = 5 - currentImages;
 
         if (remaining <= 0) {
@@ -650,7 +726,8 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         }
 
         setState(() {
-          attachments.addAll(toAdd.map((f) => Attachment(type: AttachmentType.image, file: f)));
+          attachments
+              .addAll(toAdd.map((f) => Attachment(type: AttachmentType.image, file: f)));
         });
       },
     );
@@ -666,13 +743,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       onLeft: () async {
         final f = await mediaCapture.captureVideoFromCamera();
         if (f != null) {
-          setState(() => attachments.add(Attachment(type: AttachmentType.video, file: f)));
+          setState(
+                () => attachments.add(Attachment(type: AttachmentType.video, file: f)),
+          );
         }
       },
       onRight: () async {
         final f = await galleryPicker.pickSingleVideo(context);
         if (f != null) {
-          setState(() => attachments.add(Attachment(type: AttachmentType.video, file: f)));
+          setState(
+                () => attachments.add(Attachment(type: AttachmentType.video, file: f)),
+          );
         }
       },
     );
@@ -686,25 +767,28 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       leftText: 'Record',
       rightText: 'Files',
       onLeft: () async {
-        // ✅ Fix: File is now known because we imported dart:io
         final file = await Navigator.push<File?>(
           context,
-          MaterialPageRoute(builder: (_) => const AudioRecordScreen(maxSeconds: 60)),
+          MaterialPageRoute(
+            builder: (_) => const AudioRecordScreen(maxSeconds: 60),
+          ),
         );
         if (file != null) {
-          setState(() => attachments.add(Attachment(type: AttachmentType.audio, file: file)));
+          setState(
+                () => attachments.add(Attachment(type: AttachmentType.audio, file: file)),
+          );
         }
       },
       onRight: () async {
         final f = await audioPicker.pickAudioFromFiles();
         if (f != null) {
-          setState(() => attachments.add(Attachment(type: AttachmentType.audio, file: f)));
+          setState(
+                () => attachments.add(Attachment(type: AttachmentType.audio, file: f)),
+          );
         }
       },
     );
   }
-
-  // =================== SUBMIT ===================
 
   String _prettyDioError(Object e) {
     if (e is DioException) {
@@ -719,7 +803,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   Future<void> _submit() async {
     if (submitting) return;
 
-    // 1) collect text controllers
     for (final entry in controllers.entries) {
       values[entry.key] = entry.value.text.trim();
     }
@@ -735,29 +818,31 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         apiPrefix: apiPrefix,
       );
 
-      // Pull signature bytes OUT of fields JSON.
       final Uint8List? signatureBytes =
       values['signature'] is Uint8List ? values['signature'] as Uint8List : null;
+
       values['postSiteId'] = SessionData.postSiteID;
 
       final fieldsForMongo = Map<String, dynamic>.from(values);
-      fieldsForMongo.remove('signature'); // ✅ do not JSON encode Uint8List
+      fieldsForMongo.remove('signature');
 
       final safeFields = makeJsonSafeMap(fieldsForMongo);
 
-      // 2) Create report
       final reportId = await api.createReport(
-        title: widget.reportTitle,
+        title: schema?.title ?? widget.reportTitle,
         fields: safeFields,
+        templateId: widget.templateId,
       );
 
-      // 3) Upload to Cloudinary + store refs
       final cloudUploader = CloudinaryUploader(Dio());
 
       final totalUploads = attachments.length + (signatureBytes != null ? 1 : 0);
       int done = 0;
 
-      Future<void> uploadOne({required String kind, required File file}) async {
+      Future<void> uploadOne({
+        required String kind,
+        required File file,
+      }) async {
         final sign = await api.getCloudinarySign(reportId: reportId, kind: kind);
         final cloud = await cloudUploader.upload(sign: sign, file: file);
 
@@ -782,13 +867,11 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         }
       }
 
-      // Signature upload first (if present)
       if (signatureBytes != null) {
         final sigFile = await bytesToTempPng(signatureBytes);
         await uploadOne(kind: 'signature', file: sigFile);
       }
 
-      // Other attachments
       for (final a in attachments) {
         await uploadOne(kind: a.type.name, file: a.file);
       }
@@ -796,30 +879,47 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Report submitted successfully')),
+        const SnackBar(
+          content: Text('Report submitted successfully'),
+          duration: Duration(seconds: 2),
+        ),
       );
 
       setState(() {
         attachments.clear();
-        for (final c in controllers.values) c.clear();
+        for (final c in controllers.values) {
+          c.clear();
+        }
         values.clear();
         uploadProgress = 0.0;
       });
+
+// wait briefly so user can see the success message, then go to All Reports
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+
+// remove current screen and go to All Reports
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/all_report',
+            (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Submit failed:\n${_prettyDioError(e)}')),
       );
     } finally {
-      if (mounted) setState(() => submitting = false);
+      if (mounted) {
+        setState(() => submitting = false);
+      }
     }
   }
-
-  // =================== FIELDS ===================
 
   Future<void> _pickDate(String keyName) async {
     final current = values[keyName] as DateTime? ?? DateTime.now();
     final now = DateTime.now();
+
     final picked = await showDatePicker(
       context: context,
       initialDate: current,
@@ -838,12 +938,28 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         );
       },
     );
-    if (picked != null) setState(() => values[keyName] = picked);
+
+    if (picked != null) {
+      setState(() => values[keyName] = picked);
+    }
   }
 
   String _formatDate(DateTime d) {
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final wd = weekdays[d.weekday - 1];
     final mm = months[d.month - 1];
     final dd = d.day.toString().padLeft(2, '0');
@@ -869,7 +985,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () async {
-                // ✅ MUST be Uint8List? because user may cancel/back
                 final Uint8List? result = await Navigator.push<Uint8List?>(
                   context,
                   MaterialPageRoute(builder: (_) => const SignatureScreen()),
@@ -890,12 +1005,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                     ? Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-
                     const Icon(Icons.draw, color: Colors.white70),
                     const SizedBox(width: 10),
                     Text(
                       'Add Signature',
-                      // textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontWeight: FontWeight.w700,
@@ -947,6 +1060,8 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
       case FieldType.text:
       case FieldType.textarea:
+      case FieldType.number:
+      case FieldType.time:
         final ctrl = controllers[f.keyName]!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -956,7 +1071,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             _DarkTextField(
               controller: ctrl,
               hint: f.hint ?? '',
-              maxLines: f.maxLines,
+              maxLines: f.type == FieldType.textarea ? f.maxLines : 1,
+              keyboardType: f.type == FieldType.number
+                  ? TextInputType.number
+                  : TextInputType.text,
             ),
           ],
         );
@@ -980,13 +1098,56 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             })),
           ],
         );
+
+      case FieldType.checkbox:
+        final current = values[f.keyName] == true;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            labelRow,
+            const SizedBox(height: 10),
+            InkWell(
+              onTap: () => setState(() => values[f.keyName] = !current),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2B2F35),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF3A3A3A)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      current ? Icons.check_box : Icons.check_box_outline_blank,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      f.hint?.isNotEmpty == true ? f.hint! : 'Select',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
     }
   }
 
-  // =================== UI ===================
-
   @override
   Widget build(BuildContext context) {
+    if (loadingSchema || schema == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0B0B0B),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final currentSchema = schema!;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B0B0B),
       appBar: AppBar(
@@ -998,13 +1159,14 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         ),
         centerTitle: true,
         title: Text(
-          schema.title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          currentSchema.title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
-
-      // ✅ Your FAB menu triggers mic/video/camera -> which open the camera/gallery/options
-      floatingActionButton: schema.showFabMenu
+      floatingActionButton: currentSchema.showFabMenu
           ? _FabMenu(
         isOpen: fabOpen,
         onToggle: () => setState(() => fabOpen = !fabOpen),
@@ -1022,7 +1184,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         },
       )
           : null,
-
       bottomNavigationBar: SafeArea(
         top: false,
         child: Material(
@@ -1040,12 +1201,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0F3DFF),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       elevation: 0,
                     ),
                     child: Text(
                       submitting ? 'Submitting...' : 'Submit',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -1071,7 +1237,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           ),
         ),
       ),
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 90),
@@ -1079,9 +1244,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (int i = 0; i < schema.fields.length; i++) ...[
-                  _buildField(schema.fields[i]),
-                  if (i != schema.fields.length - 1) const SizedBox(height: 18),
+                for (int i = 0; i < currentSchema.fields.length; i++) ...[
+                  _buildField(currentSchema.fields[i]),
+                  if (i != currentSchema.fields.length - 1)
+                    const SizedBox(height: 18),
                 ],
                 AttachmentsBar(
                   items: attachments,
@@ -1097,10 +1263,9 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   }
 }
 
-/* -------------------- UI components (same style you already used) -------------------- */
-
 class _SectionCard extends StatelessWidget {
   final Widget child;
+
   const _SectionCard({required this.child});
 
   @override
@@ -1125,6 +1290,7 @@ class _SectionCard extends StatelessWidget {
 
 class _SectionLabel extends StatelessWidget {
   final String text;
+
   const _SectionLabel(this.text);
 
   @override
@@ -1191,9 +1357,17 @@ class _DarkDropdown extends StatelessWidget {
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
           dropdownColor: const Color(0xFF141414),
-          hint: Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.35))),
+          hint: Text(
+            hint,
+            style: TextStyle(color: Colors.white.withOpacity(0.35)),
+          ),
           style: const TextStyle(color: Colors.white),
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          items: items.map((e) {
+            return DropdownMenuItem<String>(
+              value: e,
+              child: Text(e),
+            );
+          }).toList(),
           onChanged: onChanged,
         ),
       ),
@@ -1206,7 +1380,11 @@ class _DarkTapField extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? trailing;
 
-  const _DarkTapField({required this.text, required this.onTap, this.trailing});
+  const _DarkTapField({
+    required this.text,
+    required this.onTap,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1224,7 +1402,10 @@ class _DarkTapField extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              child: Text(
+                text,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
             if (trailing != null) trailing!,
           ],
@@ -1238,11 +1419,13 @@ class _DarkTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final int maxLines;
+  final TextInputType? keyboardType;
 
   const _DarkTextField({
     required this.controller,
     required this.hint,
-    required this.maxLines,
+    this.maxLines = 1,
+    this.keyboardType,
   });
 
   @override
@@ -1257,6 +1440,7 @@ class _DarkTextField extends StatelessWidget {
       child: TextField(
         controller: controller,
         maxLines: maxLines,
+        keyboardType: keyboardType,
         style: const TextStyle(color: Colors.white, fontSize: 15),
         cursorColor: Colors.white,
         decoration: InputDecoration(
@@ -1290,7 +1474,8 @@ class _RadioCard extends StatelessWidget {
           color: const Color(0xFF2B2F35),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? const Color(0xFF0F3DFF) : const Color(0xFF3A3A3A),
+            color:
+            selected ? const Color(0xFF0F3DFF) : const Color(0xFF3A3A3A),
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1304,7 +1489,10 @@ class _RadioCard extends StatelessWidget {
             ),
             Text(
               title,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -1312,8 +1500,6 @@ class _RadioCard extends StatelessWidget {
     );
   }
 }
-
-/* ---------------- FAB MENU ---------------- */
 
 class _FabMenu extends StatelessWidget {
   final bool isOpen;
@@ -1351,13 +1537,17 @@ class _MainFab extends StatefulWidget {
   final bool isOpen;
   final VoidCallback onTap;
 
-  const _MainFab({required this.isOpen, required this.onTap});
+  const _MainFab({
+    required this.isOpen,
+    required this.onTap,
+  });
 
   @override
   State<_MainFab> createState() => _MainFabState();
 }
 
-class _MainFabState extends State<_MainFab> with SingleTickerProviderStateMixin {
+class _MainFabState extends State<_MainFab>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 260),
@@ -1385,7 +1575,8 @@ class _MainFabState extends State<_MainFab> with SingleTickerProviderStateMixin 
         return Transform.rotate(
           angle: rotation,
           child: FloatingActionButton(
-            backgroundColor: t > 0.5 ? const Color(0xFFFF5A3D) : const Color(0xFF0F3DFF),
+            backgroundColor:
+            t > 0.5 ? const Color(0xFFFF5A3D) : const Color(0xFF0F3DFF),
             onPressed: widget.onTap,
             child: Icon(
               t > 0.5 ? Icons.close : Icons.add,
@@ -1417,7 +1608,10 @@ class _MiniFab extends StatelessWidget {
       switchInCurve: Curves.easeOutBack,
       switchOutCurve: Curves.easeIn,
       transitionBuilder: (child, anim) {
-        return FadeTransition(opacity: anim, child: ScaleTransition(scale: anim, child: child));
+        return FadeTransition(
+          opacity: anim,
+          child: ScaleTransition(scale: anim, child: child),
+        );
       },
       child: show
           ? FloatingActionButton(
@@ -1428,7 +1622,11 @@ class _MiniFab extends StatelessWidget {
         onPressed: onTap,
         child: Icon(icon, color: Colors.white),
       )
-          : const SizedBox(key: ValueKey('hidden'), height: 0, width: 0),
+          : const SizedBox(
+        key: ValueKey('hidden'),
+        height: 0,
+        width: 0,
+      ),
     );
   }
 }
