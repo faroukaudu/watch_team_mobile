@@ -111,7 +111,13 @@ class _AllReportsState extends State<AllReports> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.maybePop(context),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushReplacementNamed(context, '/dashboard');
+              }
+            },
           ),
           centerTitle: true,
           title: const Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:watch_team/screens/report/all_report.dart';
+import 'package:watch_team/screens/visitor_list_screen.dart';
 import 'post_site.dart';
 import 'home-dash.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -12,6 +13,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:watch_team/screens/checklist_list_screen.dart';
+import 'package:watch_team/screens/tasks/task_list_screen.dart';
 
 // MAP SCREEN
 class PostsiteDetails extends StatefulWidget {
@@ -400,7 +403,23 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
                               Navigator.of(context, rootNavigator: true).pushNamed('/all_report');
 
                               },),
-                            IconsText(iconType: Icons.av_timer, itemName: "Task",),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TaskListScreen(
+                                      postSiteId: postSitemap['_id'].toString(),
+                                      postSiteName: postSitemap['siteName'].toString(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: IconsText(
+                                iconType: Icons.av_timer,
+                                itemName: "Task",
+                              ),
+                            ),
                           ]
                       ),
                       TableRow(
@@ -429,8 +448,34 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
                                 ),
                               ),
                             ),
-                            IconsText(iconType: Icons.groups_2_outlined, itemName: "Visitors",),
-                            IconsText(iconType: Icons.checklist_outlined, itemName: "Checklist",),
+                            GestureDetector(
+                              onTap: (){
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VisitorListScreen(
+                                      postSiteId: postSitemap['_id'].toString(),
+                                      postSiteName: postSitemap['siteName'].toString(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child:IconsText(iconType: Icons.groups_2_outlined, itemName: "Visitors",),
+                            ),
+                            GestureDetector(
+                              onTap: (){
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChecklistListScreen(
+                                      postSiteId: postSitemap['_id'].toString(),
+                                      postSiteName: postSitemap['siteName'].toString(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: IconsText(iconType: Icons.checklist_outlined, itemName: "Checklist",),
+                            ),
                           ]
                       ),
                       TableRow(

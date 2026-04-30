@@ -6,6 +6,10 @@ import 'package:intl/intl.dart';
 import '../routes.dart';
 import 'package:watch_team/services/worked_hours_service.dart';
 import '../main.dart';
+import 'dispatch_list_screen.dart';
+import 'package:watch_team/screens/shifts/open_shift_screen.dart';
+import 'package:watch_team/screens/schedule/availability_screen.dart';
+import 'package:watch_team/screens/schedule/schedule_screen.dart';
 
 
 class HomeDashboard extends StatefulWidget {
@@ -448,16 +452,50 @@ class _HomeDashboardState extends State<HomeDashboard> {
                         children: [
                           TableRow(
                               children: [
-                                IconsText(iconType: Icons.event, itemName: "Events",),
-                                IconsText(iconType: Icons.send_time_extension, itemName: "Dispatch",),
+                                GestureDetector(
+                                  onTap: (){
+                                    Navigator.pushNamed(context, '/events');
+                                  },
+                                  child: IconsText(iconType: Icons.event, itemName: "Events",),
+                                ),
+                                GestureDetector(
+                                  onTap: (){
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const DispatchListScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: IconsText(iconType: Icons.send_time_extension, itemName: "Dispatch",),
+                                ),
                                 IconsText(iconType: Icons.local_taxi, itemName: "Vehicle Patrol",),
                               ]
                           ),
                           TableRow(
                               children: [
                                 IconsText(iconType: Icons.policy, itemName: "Docs & Policies"),
-                                IconsText(iconType: Icons.event_note, itemName: "Schedule",),
-                                IconsText(iconType: Icons.av_timer, itemName: "Open Shifts",),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+                                    );
+                                  },
+                                  child: IconsText(iconType: Icons.event_note, itemName: "Schedule"),
+                                ),
+                                GestureDetector(
+                                  onTap: (){
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const OpenShiftScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: IconsText(iconType: Icons.av_timer, itemName: "Open Shifts",),
+                                ),
+
                               ]
                           ),
                           TableRow(
@@ -487,13 +525,26 @@ class _HomeDashboardState extends State<HomeDashboard> {
                                   ),
                                 ),
                                 IconsText(iconType: Icons.nest_cam_wired_stand, itemName: "Watch Mode",),
-                                IconsText(iconType: Icons.event_available, itemName: "Availability",),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const AvailabilityScreen()),
+                                    );
+                                  },
+                                  child: IconsText(iconType: Icons.event_available, itemName: "Availability"),
+                                ),
                               ]
                           ),
                           TableRow(
                               children: [
                                 IconsText(iconType: Icons.alarm, itemName: "Remainders",),
-                                IconsText(iconType: Icons.edit_document, itemName: "Notes",),
+                                GestureDetector(
+                                  onTap: (){
+                                    Navigator.pushNamed(context, '/notes');
+                                  },
+                                  child: IconsText(iconType: Icons.edit_document, itemName: "Notes",),
+                                ),
                                 Text(""),
                                 // IconsText(iconType: Icons.attractions_outlined, itemName: "Availability",),
                               ]
