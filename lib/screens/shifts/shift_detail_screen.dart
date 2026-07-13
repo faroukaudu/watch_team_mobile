@@ -66,11 +66,18 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
       final guardName =
       (SessionData.userProfile?['fullname'] ?? 'Guard').toString();
 
-      await api.selectOpenShift(
+      final selectedResponse = await api.selectOpenShift(
         shiftTemplateId: widget.shift['_id'].toString(),
         guardId: guardId,
         guardName: guardName,
       );
+
+      if (selectedResponse['shift'] is Map) {
+        SessionData.selectedShift =
+        Map<String, dynamic>.from(selectedResponse['shift'] as Map);
+      } else {
+        SessionData.selectedShift = widget.shift;
+      }
 
       if (!mounted) return;
 
@@ -156,7 +163,8 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
 
   Future<void> loadPendingExchangeForMe() async {
     try {
-      final companyId = (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+      final companyId =
+      (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
       final guardId = (SessionData.userProfile?['_id'] ?? '').toString();
 
       final exchanges = await api.getReceivedShiftExchangeRequests(
@@ -167,7 +175,11 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
 
       if (exchanges.isNotEmpty) {
         setState(() {
-          pendingExchangeForMe = exchanges.first;
+          pendingExchangeForMe = Map<String, dynamic>.from(exchanges.first);
+        });
+      } else {
+        setState(() {
+          pendingExchangeForMe = null;
         });
       }
     } catch (_) {}
@@ -177,7 +189,8 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
     setState(() => loadingExchange = true);
 
     try {
-      final companyId = (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+      final companyId =
+      (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
       final guardId = (SessionData.userProfile?['_id'] ?? '').toString();
 
       final guards = await api.getShiftExchangeGuards(
@@ -197,8 +210,14 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
         builder: (_) {
-          final text = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
-          final muted = Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(.65) ?? Colors.grey;
+          final text =
+              Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+          final muted = Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.color
+              ?.withOpacity(.65) ??
+              Colors.grey;
 
           if (guards.isEmpty) {
             return Padding(
@@ -217,10 +236,13 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
               children: [
                 Text(
                   "Exchange Shift With",
-                  style: TextStyle(color: text, fontSize: 20, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: text,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 12),
-
                 ...guards.map((guard) {
                   return ListTile(
                     leading: const CircleAvatar(
@@ -256,9 +278,11 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
 
   Future<void> sendExchangeRequestToGuard(Map<String, dynamic> guard) async {
     try {
-      final companyId = (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+      final companyId =
+      (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
       final myGuardId = (SessionData.userProfile?['_id'] ?? '').toString();
-      final myGuardName = (SessionData.userProfile?['fullname'] ?? 'Guard').toString();
+      final myGuardName =
+      (SessionData.userProfile?['fullname'] ?? 'Guard').toString();
 
       await api.sendShiftExchangeRequest(
         payload: {
@@ -289,6 +313,16 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
   Future<void> acceptExchange() async {
     if (pendingExchangeForMe == null) return;
 
+    final exchangeStatus =
+    (pendingExchangeForMe?['status'] ?? '').toString().toLowerCase();
+
+    if (exchangeStatus != "pending") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Already Assigned")),
+      );
+      return;
+    }
+
     try {
       await api.respondShiftExchange(
         exchangeId: pendingExchangeForMe!['_id'].toString(),
@@ -297,6 +331,13 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
 
       if (!mounted) return;
 
+      setState(() {
+        pendingExchangeForMe = {
+          ...pendingExchangeForMe!,
+          'status': 'Accepted',
+        };
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Shift exchange accepted")),
       );
@@ -304,7 +345,13 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
       Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to accept exchange: $e")),
+        SnackBar(
+          content: Text(
+            e.toString().contains("409")
+                ? "Already Assigned"
+                : "Failed to accept exchange: $e",
+          ),
+        ),
       );
     }
   }
@@ -328,6 +375,11 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
     final selected = selectedByMe();
     final selectedByOther = selectedByAnotherGuard();
     final hasExchangeRequest = pendingExchangeForMe != null;
+    final exchangeStatus =
+    (pendingExchangeForMe?['status'] ?? '').toString().toLowerCase();
+    final canAcceptExchange = hasExchangeRequest && exchangeStatus == "pending";
+    final exchangeAlreadyAccepted =
+        hasExchangeRequest && exchangeStatus == "accepted";
 
     final repeatDays = widget.shift['repeatDays'] is List
         ? (widget.shift['repeatDays'] as List).join(", ")
@@ -358,7 +410,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
         child: SafeArea(
           child: SizedBox(
             height: 54,
-            child:Row(
+            child: Row(
               children: [
                 if (selected) ...[
                   Expanded(
@@ -384,10 +436,10 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                   const SizedBox(width: 10),
                 ],
 
-                if (hasExchangeRequest) ...[
+                if (canAcceptExchange) ...[
                   Expanded(
                     child: SizedBox(
-                      height: 52, // 👈 forces proper vertical centering
+                      height: 52,
                       child: ElevatedButton.icon(
                         onPressed: acceptExchange,
                         icon: const Icon(Icons.check_circle, size: 20),
@@ -398,17 +450,13 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
-
-                          padding: const EdgeInsets.symmetric(horizontal: 12), // 👈 remove vertical padding
-
-                          alignment: Alignment.center, // 👈 centers content
-
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          alignment: Alignment.center,
                           textStyle: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 14,
-                            height: 1.1, // 👈 fixes text baseline issue
+                            height: 1.1,
                           ),
-
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -416,15 +464,34 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                       ),
                     ),
                   ),
+                ] else if (exchangeAlreadyAccepted) ...[
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.lock),
+                      label: const Text("Already Assigned"),
+                      style: ElevatedButton.styleFrom(
+                        disabledBackgroundColor: Colors.grey.shade700,
+                        disabledForegroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
                 ] else ...[
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: selected || selectedByOther || selecting ? null : selectShift,
+                      onPressed:
+                      selected || selectedByOther || selecting ? null : selectShift,
                       icon: selecting
                           ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                           : Icon(
                         selectedByOther
@@ -495,7 +562,6 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                     color: Colors.white.withOpacity(.12),
                   ),
                 ),
-
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -512,9 +578,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                         size: 26,
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     Text(
                       value("shiftTitle"),
                       style: const TextStyle(
@@ -523,9 +587,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
                     Text(
                       value("postSiteName"),
                       style: TextStyle(
@@ -534,23 +596,28 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                         fontSize: 14,
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(.18),
                             borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: Colors.white.withOpacity(.25)),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(.25),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                selected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                selected
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
                                 size: 16,
                                 color: Colors.white,
                               ),
@@ -565,11 +632,12 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                             ],
                           ),
                         ),
-
                         const SizedBox(width: 10),
-
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(.16),
                             borderRadius: BorderRadius.circular(22),
@@ -577,7 +645,11 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.access_time, size: 16, color: Colors.white),
+                              const Icon(
+                                Icons.access_time,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 "${value("startTime")} - ${value("endTime")}",
@@ -596,9 +668,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 18),
-
           infoTile(
             context,
             icon: Icons.schedule,

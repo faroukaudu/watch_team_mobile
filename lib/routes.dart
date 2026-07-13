@@ -17,6 +17,8 @@ import 'package:watch_team/screens/dispatch_list_screen.dart';
 import 'package:watch_team/screens/visitor_detail_screen.dart';
 import 'package:watch_team/screens/visitor_list_screen.dart';
 import 'package:watch_team/screens/add_visitor_screen.dart';
+import 'package:watch_team/screens/watchmode_screen.dart';
+import 'package:watch_team/screens/dar_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -33,6 +35,9 @@ class AppRoutes {
   static const String visitor_detail_screen = '/visitor_detail_screen';
   static const String visitor_list_screen = '/visitor_list_screen';
   static const String add_visitor_screen = '/add_visitor_screen';
+  static const String watchmode = '/watchmode';
+  static const String dar = '/dar';
+
 
 
 
@@ -55,6 +60,8 @@ class AppRoutes {
     visitor_detail_screen:(context) => const VisitorDetailScreen(visitor: {}),
     visitor_list_screen:(context) => const VisitorListScreen(postSiteId: '', postSiteName: ''),
     add_visitor_screen:(context) => const AddVisitorScreen(postSiteId: '', postSiteName: ''),
+    watchmode: (context) => const WatchModeScreen(),
+    // dar: (context) => const DARScreen(),
 
 
     send_reports: (context) {

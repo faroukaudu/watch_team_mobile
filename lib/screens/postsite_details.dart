@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:watch_team/screens/report/all_report.dart';
+import 'package:watch_team/screens/site_tours_screen.dart';
 import 'package:watch_team/screens/visitor_list_screen.dart';
+import 'dar_screen.dart';
 import 'post_site.dart';
 import 'home-dash.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -15,6 +17,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:watch_team/screens/checklist_list_screen.dart';
 import 'package:watch_team/screens/tasks/task_list_screen.dart';
+import 'package:watch_team/screens/post_site_security_team_screen.dart';
+import 'package:watch_team/screens/post_site_contact_screen.dart';
+import 'package:watch_team/screens/passdown_screen.dart';
 
 // MAP SCREEN
 class PostsiteDetails extends StatefulWidget {
@@ -136,6 +141,7 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
     }
 
     if(checkedIn == false){
+      if (!_canStartSelectedShift()) return;
       setState(() {
         checkedIn = true;
         SessionData.clockedIn = true;
@@ -169,6 +175,8 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
   late String title ;
   late String snip;
   // LatLng? targetLocation; // starts as null
+
+
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_initialized) return; // prevents running multiple times
@@ -187,6 +195,50 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
 
     _initialized = true;
   }
+
+  DateTime? _todayShiftDateTime(String? timeText) {
+    if (timeText == null || timeText.trim().isEmpty) return null;
+    final parts = timeText.trim().split(":");
+    if (parts.length < 2) return null;
+    final now = DateTime.now();
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  }
+
+  bool _canStartSelectedShift() {
+    final shift = SessionData.selectedShift;
+    if (shift == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select an open shift before going to a post site.")),
+      );
+      return false;
+    }
+
+    final selectedPostSiteId = shift['postSiteId']?.toString() ?? '';
+    final currentPostSiteId = postSitemap['_id']?.toString() ?? SessionData.postSiteID?.toString() ?? '';
+
+    if (selectedPostSiteId.isNotEmpty && currentPostSiteId.isNotEmpty && selectedPostSiteId != currentPostSiteId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("This selected shift is not assigned to this post site.")),
+      );
+      return false;
+    }
+
+    final start = _todayShiftDateTime(shift['startTime']?.toString());
+    if (start != null) {
+      final allowedStart = start.subtract(const Duration(hours: 1));
+      if (DateTime.now().isBefore(allowedStart)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("You can only start this shift 1 hour before ${shift['startTime']}")),
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   bool checkedIn = false;
   void _checkIN(){
     // if(checkedIn == false){
@@ -374,136 +426,190 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
               ),
               child: SingleChildScrollView(
                 child: Table(
-                    border: TableBorder(
-                      horizontalInside: BorderSide(color: Colors.grey.shade800),
-                      verticalInside: BorderSide(color: Colors.grey.shade800),
-                    ),
-                    children: [
-                      TableRow(
-                          children: [
-                            IconsText(iconType: Icons.crisis_alert, itemName: "Panic Mode",),
-                            IconsText(iconType: Icons.person_pin_circle_outlined, itemName: "Site Tours",),
-                            IconsText(iconType: Icons.qr_code_scanner, itemName: "Scan Tag",
-                            onTap: (){
-                              Navigator.of(context, rootNavigator: true).pushNamed('/scantag_screen');
-                            },
-                            ),
-                          ]
-                      ),
-                      TableRow(
-                          // Navigator.pushNamed(context, AppRoutes.all_reports);
-                          children: [
-                            IconsText(iconType: Icons.add_chart, itemName: "Post Orders",
-                                onTap: (){
-                                Navigator.of(context, rootNavigator: true).pushNamed('/post_order_screen');
-                                }
-                            ),
-                            IconsText(iconType: Icons.description_outlined, itemName: "Reports",
-                              onTap: (){ print('working');
-                              Navigator.of(context, rootNavigator: true).pushNamed('/all_report');
-
-                              },),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => TaskListScreen(
-                                      postSiteId: postSitemap['_id'].toString(),
-                                      postSiteName: postSitemap['siteName'].toString(),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: IconsText(
-                                iconType: Icons.av_timer,
-                                itemName: "Task",
-                              ),
-                            ),
-                          ]
-                      ),
-                      TableRow(
-                          children: [
-                            InkWell(
-
-                              // onTap: (){
-                              //   print(isTorchOn);
-                              //   setState(() {
-                              //     _enableTorch(context);
-                              //
-                              //   });
-                              // },
-                              child: Container(
-                                margin: EdgeInsets.symmetric(vertical: 15, horizontal: 5),
-                                child: Column(
-                                  children: [
-                                    Container(
-                                        margin: EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-                                        height:35,
-                                        width: 35,
-                                        decoration: BoxDecoration(color: Color(0xFF123458), borderRadius: BorderRadius.circular(10)),
-                                        child: Icon(Icons.move_down, size: 20,)),
-                                    Text("PassDown", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white, )),
-                                  ],
+                  border: TableBorder(
+                    horizontalInside: BorderSide(color: Colors.grey.shade800),
+                    verticalInside: BorderSide(color: Colors.grey.shade800),
+                  ),
+                  children: [
+                    TableRow(
+                      children: [
+                        const IconsText(
+                          iconType: Icons.crisis_alert,
+                          itemName: "Panic Mode",
+                        ),
+                        IconsText(
+                          iconType: Icons.person_pin_circle_outlined,
+                          itemName: "Site Tours",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SiteToursScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
                                 ),
                               ),
-                            ),
-                            GestureDetector(
-                              onTap: (){
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => VisitorListScreen(
-                                      postSiteId: postSitemap['_id'].toString(),
-                                      postSiteName: postSitemap['siteName'].toString(),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child:IconsText(iconType: Icons.groups_2_outlined, itemName: "Visitors",),
-                            ),
-                            GestureDetector(
-                              onTap: (){
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ChecklistListScreen(
-                                      postSiteId: postSitemap['_id'].toString(),
-                                      postSiteName: postSitemap['siteName'].toString(),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: IconsText(iconType: Icons.checklist_outlined, itemName: "Checklist",),
-                            ),
-                          ]
-                      ),
-                      TableRow(
-                          children: [
-                            IconsText(iconType: Icons.local_parking, itemName: "Parking Manager",),
-                            IconsText(iconType: Icons.supervisor_account, itemName: "Security Team",),
-                            IconsText(iconType: Icons.contact_phone, itemName: "Contact",),
-                            // Textgtgt(""),
-                            // IconsText(iconType: Icons.attractions_outlined, itemName: "Availability",),
-                          ]
-                      ),
-                      TableRow(
-                          children: [
-                            IconsText(iconType: Icons.content_paste_search, itemName: "DAR",),
-                            // Text(
-                            //   mypostId ?? "No post site selected",
-                            //   style: const TextStyle(color: Colors.white),
-                            // ),
-                            Text(""),
-                            Text(""),
-                            // IconsText(iconType: Icons.edit_document, itemName: "Security Team",),
-                            // IconsText(iconType: Icons.edit_document, itemName: "Contact",),
-                            // Text(""),
-                            // IconsText(iconType: Icons.attractions_outlined, itemName: "Availability",),
-                          ]
-                      ),
+                            );
+                          },
+                        ),
+                        IconsText(
+                          iconType: Icons.qr_code_scanner,
+                          itemName: "Scan Tag",
+                          onTap: () {
+                            Navigator.of(context, rootNavigator: true)
+                                .pushNamed('/scantag_screen');
+                          },
+                        ),
+                      ],
+                    ),
 
-                    ]
+                    TableRow(
+                      children: [
+                        IconsText(
+                          iconType: Icons.add_chart,
+                          itemName: "Post Orders",
+                          onTap: () {
+                            Navigator.of(context, rootNavigator: true)
+                                .pushNamed('/post_order_screen');
+                          },
+                        ),
+                        IconsText(
+                          iconType: Icons.description_outlined,
+                          itemName: "Reports",
+                          onTap: () {
+                            Navigator.of(context, rootNavigator: true)
+                                .pushNamed('/all_report');
+                          },
+                        ),
+                        IconsText(
+                          iconType: Icons.av_timer,
+                          itemName: "Task",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TaskListScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    TableRow(
+                      children: [
+                        IconsText(
+                          iconType: Icons.move_down,
+                          itemName: "PassDown",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PassdownScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        IconsText(
+                          iconType: Icons.groups_2_outlined,
+                          itemName: "Visitors",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VisitorListScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        IconsText(
+                          iconType: Icons.checklist_outlined,
+                          itemName: "Checklist",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChecklistListScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    TableRow(
+                      children: [
+                        const IconsText(
+                          iconType: Icons.local_parking,
+                          itemName: "Parking Manager",
+                        ),
+                        IconsText(
+                          iconType: Icons.supervisor_account,
+                          itemName: "Security Team",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PostSiteSecurityTeamScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        IconsText(
+                          iconType: Icons.contact_phone,
+                          itemName: "Contact",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PostSiteContactScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    TableRow(
+                      children: [
+                        IconsText(
+                          iconType: Icons.assignment,
+                          itemName: "DAR",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DARScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox.shrink(),
+                        const SizedBox.shrink(),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),

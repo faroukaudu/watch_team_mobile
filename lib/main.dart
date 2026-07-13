@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '/routes.dart';
+import 'package:watch_team/services/notification_helper.dart';
 // AIzaSyASbZIITafeYZViSsD0PqqPcUVaX_dabm8
 // API KEY
 void main() async{
@@ -9,6 +10,7 @@ void main() async{
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+  await NotificationHelper.init();
   runApp(MyApp());
 }
 // Extend AppColors with dark theme values

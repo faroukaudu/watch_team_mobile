@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:watch_team/session_data.dart';
 import 'package:watch_team/global.dart' as g;
 import 'package:watch_team/services/worked_hours_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:watch_team/screens/auth/forgot_password_email_screen.dart';
+
+import '../services/api_client.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 // import 'package:animations/animations.dart';
 
 // import 'package:flutter/material.dart';
@@ -34,17 +39,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isloading = false;
 
-  void _showLoader() async {
+  void _showLoader() {
+    if (!mounted) return;
+
     setState(() {
       _isloading = true;
     });
+  }
 
-    await Future.delayed(const Duration(seconds: 3));
+  void _hideLoader() {
+    if (!mounted) return;
 
     setState(() {
       _isloading = false;
     });
-
   }
 
 
@@ -146,12 +154,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(
                       child: SingleChildScrollView(
                         child:isPhoneSelected?
-                        PhoneForm(key: ValueKey('phone'), formKey: _phoneFormKey,
-                            phoneController: _phoneController,
-                            passwordController: _passwordController):
-                        EmailForm(key: ValueKey('email'), formKey: _emailFormKey,
-                            emailController: _emailController,
-                            passwordController: _passwordController,loaderOnPressed: _showLoader, ),
+                        PhoneForm(
+                          key: const ValueKey('phone'),
+                          formKey: _phoneFormKey,
+                          phoneController: _phoneController,
+                          passwordController: _passwordController,
+                          loaderOnPressed: _showLoader,
+                          loaderOff: () {
+                            if (!mounted) return;
+
+                            setState(() {
+                              _isloading = false;
+                            });
+                          },
+                        ):
+                        EmailForm(
+                          key: const ValueKey('email'),
+                          formKey: _emailFormKey,
+                          emailController: _emailController,
+                          passwordController: _passwordController,
+                          loaderOnPressed: _showLoader,
+                          hideLoader: _hideLoader,
+                        ),
                       ),
                     ),
 
@@ -182,109 +206,507 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class PhoneForm extends StatelessWidget {
+class PhoneForm extends StatefulWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController phoneController;
   final TextEditingController passwordController;
+  final VoidCallback loaderOnPressed;
+  final VoidCallback loaderOff;
 
+  const PhoneForm({
+    super.key,
+    required this.formKey,
+    required this.phoneController,
+    required this.passwordController,
+    required this.loaderOnPressed,
+    required this.loaderOff,
+  });
 
-  // final String formKey;
-  const PhoneForm({Key? key, required this.formKey, required this.phoneController, required this.passwordController}): super(key: key);
+  @override
+  State<PhoneForm> createState() => _PhoneFormState();
+}
+
+class _PhoneFormState extends State<PhoneForm> {
+  Future<void> _submitPhoneLogin() async {
+    if (!(widget.formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    widget.loaderOnPressed();
+
+    try {
+      final phone = widget.phoneController.text.trim();
+      final password = widget.passwordController.text;
+
+      final api = ApiClient(
+        baseUrl: '${g.baseUrl}',
+      );
+
+      final loginResponse = await api.guardPhoneSignIn(
+        phone: phone,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      if (loginResponse['success'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              loginResponse['message']?.toString() ??
+                  'Phone login failed',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        return;
+      }
+
+      final requiresSelection =
+          loginResponse['requiresAccountSelection'] == true;
+
+      if (requiresSelection) {
+        final accountsRaw =
+            loginResponse['accounts'] as List? ?? [];
+
+        final accounts = accountsRaw
+            .whereType<Map>()
+            .map(
+              (item) => Map<String, dynamic>.from(item),
+        )
+            .toList();
+
+        final selectedAccountId =
+        await _showAccountSelection(accounts);
+
+        if (!mounted || selectedAccountId == null) {
+          return;
+        }
+
+        final selectedResponse =
+        await api.selectGuardPhoneLoginAccount(
+          userId: selectedAccountId,
+        );
+
+        if (!mounted) return;
+
+        if (selectedResponse['success'] != true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                selectedResponse['message']?.toString() ??
+                    'Unable to select account',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+
+          return;
+        }
+
+        await _completeLogin(selectedResponse);
+        return;
+      }
+
+      await _completeLogin(loginResponse);
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      widget.loaderOff();
+    }
+  }
+
+  Future<String?> _showAccountSelection(
+      List<Map<String, dynamic>> accounts,
+      ) {
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF2B2F35),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(22),
+        ),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              18,
+              18,
+              18,
+              24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select Your Guard Account',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'More than one guard account uses this phone number and password.',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.65),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: accounts.length,
+                    separatorBuilder: (_, __) =>
+                    const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final account = accounts[index];
+
+                      final userId =
+                          account['userId']?.toString() ?? '';
+
+                      final fullname =
+                          account['fullname']?.toString() ??
+                              'Guard Account';
+
+                      final company =
+                          account['compName']?.toString() ??
+                              account['assignedCompanyID']
+                                  ?.toString() ??
+                              '';
+
+                      final postSites =
+                          account['guardPostSite'] as List? ??
+                              [];
+
+                      String postSiteName = '';
+
+                      if (postSites.isNotEmpty &&
+                          postSites.first is Map) {
+                        final site = Map<String, dynamic>.from(
+                          postSites.first as Map,
+                        );
+
+                        postSiteName =
+                            site['siteName']?.toString() ??
+                                site['name']?.toString() ??
+                                '';
+                      }
+
+                      return InkWell(
+                        onTap: userId.isEmpty
+                            ? null
+                            : () {
+                          Navigator.pop(
+                            sheetContext,
+                            userId,
+                          );
+                        },
+                        borderRadius:
+                        BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius:
+                            BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFF444444),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue
+                                      .withOpacity(0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.person_outline,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      fullname,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight:
+                                        FontWeight.w800,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    if (company.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        company,
+                                        style: TextStyle(
+                                          color: Colors.white
+                                              .withOpacity(0.6),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                    if (postSiteName.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        postSiteName,
+                                        style: const TextStyle(
+                                          color: Colors.blueAccent,
+                                          fontSize: 12,
+                                          fontWeight:
+                                          FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: Colors.white54,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _completeLogin(
+      Map<String, dynamic> response,
+      ) async {
+    final userId =
+        response['userId']?.toString() ??
+            response['id']?.toString() ??
+            '';
+
+    if (userId.isEmpty) {
+      throw Exception(
+        'Login succeeded, but no user ID was returned.',
+      );
+    }
+
+    await fetchUserProfile(userId);
+
+    if (!mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.dashboard,
+          (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    bool isPhoneSelected = true;
     return Column(
       children: [
-        Align(
+        const Align(
           alignment: Alignment.centerLeft,
-          child: Text("Login Via Phone",
+          child: Text(
+            'Login Via Phone',
             style: TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
             ),
           ),
         ),
         Container(
-          margin: EdgeInsets.symmetric(vertical: 30),
+          margin: const EdgeInsets.symmetric(
+            vertical: 30,
+          ),
           child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  TextFormField(
-                    controller: phoneController,
-
-                    decoration: InputDecoration(labelText: "Phone Number",
-                      labelStyle: TextStyle(color: Colors.grey, fontSize: 12),
-
-                      // Default border when field is not focused
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey), // Outline color
-                      ),
-
-                      // Border when the field is focused
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blueGrey, width: 2), // Highlight color
-                      ),),
-                    // onSaved: (value) => _email = value,
-                    validator: (value) => value!.isEmpty? "Number cannot be empty":null,
+            key: widget.formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: widget.phoneController,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  style: const TextStyle(
+                    color: Colors.white,
                   ),
-                  SizedBox(height: 30),
-                  TextFormField(
-                    controller: passwordController,
-                    decoration: InputDecoration(labelText: "Password",
-                      labelStyle: TextStyle(color: Colors.grey, fontSize: 12),
-
-                      // Default border when field is not focused
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey), // Outline color
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    hintText: 'Enter phone number',
+                    labelStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
+                      color: Colors.grey,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius:
+                      BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Colors.grey,
                       ),
-
-                      // Border when the field is focused
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blueGrey, width: 2), // Highlight color
-                      ),), obscureText: true,
-                    // onSaved: (value) => _password = value,
-                    validator: (value) => value!.length < 6 ?"Password must be at lest 6 characters":null,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius:
+                      BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Colors.blueAccent,
+                        width: 2,
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 30),
-                  SizedBox(
-                    height: 60,
-                    width: double.infinity,
-                    child: ElevatedButton(onPressed: (){
-                      // Navigator.pushNamed(context, AppRoutes.dashboard);
-                      if(formKey.currentState!.validate()){
+                  validator: (value) {
+                    if (value == null ||
+                        value.trim().isEmpty) {
+                      return 'Phone number cannot be empty';
+                    }
 
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 30),
+                TextFormField(
+                  controller: widget.passwordController,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) =>
+                      _submitPhoneLogin(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: Colors.grey,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius:
+                      BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Colors.grey,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius:
+                      BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Colors.blueAccent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null ||
+                        value.isEmpty) {
+                      return 'Password cannot be empty';
+                    }
 
-                        // formKey.currentState!.save();
-                        print("phone: ${phoneController.text}");
-                        print("password: ${passwordController.text}");
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
 
-                      }
-                    },
-                        style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(Colors.blueAccent),
-                            shape: WidgetStateProperty.all(
-                                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))
-
-                        ),
-
-                        child: Text("Submit", style: TextStyle(color: Colors.white , fontSize: 18),)),
-                  )
-                ],
-              )
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  height: 60,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitPhoneLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                      Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                        BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Login',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        TextButton(onPressed: (){
-          Navigator.pushNamed(context, '/select_report');
-        }, child: Text("Forgot Password?",
-          style: TextStyle(fontWeight:FontWeight.bold, fontSize: 15 ),)),
-        Text("Version 1.0.0",
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w300)
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                const ForgotPasswordEmailScreen(),
+              ),
+            );
+          },
+          child: const Text(
+            'Forgot Password?',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+        ),
+        FutureBuilder<PackageInfo>(
+          future: PackageInfo.fromPlatform(),
+          builder: (context, snapshot) {
+            final version = snapshot.data?.version ?? '';
+            final buildNumber = snapshot.data?.buildNumber ?? '';
+
+            return Text(
+              version.isEmpty
+                  ? 'Version'
+                  : 'Version $version ($buildNumber)',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w300,
+              ),
+            );
+          },
         ),
       ],
     );
@@ -297,11 +719,18 @@ class EmailForm extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final VoidCallback loaderOnPressed;
+  final VoidCallback hideLoader;
 
 
   // final String formKey;
-  const EmailForm({Key? key, required this.formKey, required this.emailController,
-    required this.passwordController, required this.loaderOnPressed}): super(key: key);
+  const EmailForm({
+    Key? key,
+    required this.formKey,
+    required this.emailController,
+    required this.passwordController,
+    required this.loaderOnPressed,
+    required this.hideLoader,
+  }) : super(key: key);
 
 
 
@@ -371,27 +800,58 @@ class EmailForm extends StatelessWidget {
                     width: double.infinity,
                     height: 60,
                     child: ElevatedButton(onPressed: () async {
-                      // signInRequest();
-
-
-                      if(formKey.currentState!.validate()){
+                      if (formKey.currentState!.validate()) {
                         loaderOnPressed();
-                        // Navigator.pushNamed(context, AppRoutes.dashboard);
-                        // formKey.currentState!.save();
-                        final email = emailController.text;
-                        final password = passwordController.text;
-                        final loginSuccess = await signInRequest(email,password);
-                        final profile = await fetchUserProfile(loginSuccess['id']); // returns Map
-                        // print("Email: ${emailController.text}");
-                        // print("password: ${passwordController.text}");
-                        if(loginSuccess['success']){
-                          Navigator.pushNamed(context, AppRoutes.dashboard,);
-                          // fetchUserProfile(loginSuccess['id']);
-                        }else{
-                          await Future.delayed(const Duration(seconds: 3));
+
+                        final email = emailController.text.trim();
+                        final password = passwordController.text.trim();
+
+                        final loginResponse = await signInRequest(email, password);
+
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Invalid phone or password')),
+                            SnackBar(
+                              content: Text(loginResponse['message'] ?? 'Login failed'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
                           );
+                        }
+
+                        if (loginResponse['success'] == true && loginResponse['id'] != null) {
+                          final profileLoaded = await fetchUserProfile(loginResponse['id']);
+
+                          if (profileLoaded == true) {
+                            final prefs = await SharedPreferences.getInstance();
+
+                            await prefs.setBool('isLoggedIn', true);
+                            await prefs.setString('userId', loginResponse['id']);
+                            await prefs.setString('email', loginResponse['email'] ?? '');
+
+                            hideLoader();
+
+                            if (context.mounted) {
+                              Navigator.pushReplacementNamed(
+                                context,
+                                AppRoutes.dashboard,
+                              );
+                            }
+                          } else {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.clear();
+
+                            hideLoader();
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Unable to load guard profile. Please login again.'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          }
+                        } else {
+                          hideLoader();
                         }
                       }
                     },
@@ -409,64 +869,104 @@ class EmailForm extends StatelessWidget {
           ),
         ),
         InkWell(
-          child: TextButton(onPressed: loaderOnPressed, child: Text("Forgot Password?",
-            style: TextStyle(fontWeight:FontWeight.bold, fontSize: 15 ),)),
+          child:  TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                  const ForgotPasswordEmailScreen(),
+                ),
+              );
+            },
+            child: const Text(
+              'Forgot Password?',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ),
         ),
-        Text("Version 1.0.0",
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w300)
+        FutureBuilder<PackageInfo>(
+          future: PackageInfo.fromPlatform(),
+          builder: (context, snapshot) {
+            final version = snapshot.data?.version ?? '';
+            final buildNumber = snapshot.data?.buildNumber ?? '';
+
+            return Text(
+              version.isEmpty
+                  ? 'Version'
+                  : 'Version $version ($buildNumber)',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w300,
+              ),
+            );
+          },
         ),
       ],
     );
   }
 }
 
-Future signInRequest (email, password)async{
-  // final url = Uri.parse('http://192.168.43.39:9000/guard-signin');
+Future<Map<String, dynamic>> signInRequest(String email, String password) async {
   final url = Uri.parse('${g.baseUrl}/guard-signin');
 
-  final response = await http.post(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({
-      'username': email,
-      'password': password,
-    }),
-  );
+  try {
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'username': email,
+        'password': password,
+      }),
+    );
 
-  if (response.statusCode == 200) {
-    print('Server response: ${response.body}');
-    final data =jsonDecode(response.body);
+    final data = jsonDecode(response.body);
+
     return {
-      'success':true,
-      'message':data['message'],
-      'email':data['email'],
-      'id':data['userId'],
+      'success': response.statusCode == 200 && data['success'] == true,
+      'message': data['message'] ?? 'Login failed',
+      'email': data['email'],
+      'id': data['userId'],
     };
-    // return true;
-  } else {
-    print('Failed: ${response.statusCode}');
-    return false;
+  } catch (e) {
+    return {
+      'success': false,
+      'message': 'Unable to connect to server. Please try again.',
+      'email': null,
+      'id': null,
+    };
   }
 }
 
 
-Future<void> fetchUserProfile(String id) async {
-  final response = await http.get(
-    // Uri.parse('http://192.168.43.39:9000/guard-info?id=$id'),
-    Uri.parse('${g.baseUrl}/guard-info?id=$id'),
-    // Uri.parse('https://watch-team.onrender.com/guard-info?id=$id'),
-  );
+Future<bool> fetchUserProfile(String id) async {
+  try {
+    final response = await http.get(
+      Uri.parse('${g.baseUrl}/guard-info?id=$id'),
+    );
 
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
-    SessionData.userProfile = data['guardData'];
-    SessionData.companyInfo = data['company'];
-    SessionData.token = "oudnwoidnwdowndwoidnw";
-    print("User profile: $data");
-    // TODO: update state / navigate / show data
-  } else {
-    print("Failed to fetch user profile: ${response.statusCode}");
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      if (data['guardData'] == null) {
+        return false;
+      }
+
+      SessionData.userProfile = data['guardData'];
+      SessionData.companyInfo = data['company'];
+
+      return true;
+    }
+
+    print('Failed to fetch user profile: ${response.statusCode}');
+    return false;
+  } catch (e) {
+    print('Failed to fetch user profile: $e');
+    return false;
   }
 }

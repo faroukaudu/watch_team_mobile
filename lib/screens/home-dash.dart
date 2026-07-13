@@ -5,12 +5,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../routes.dart';
 import 'package:watch_team/services/worked_hours_service.dart';
-import '../main.dart';
+import 'package:watch_team/services/api_client.dart';
+import 'package:watch_team/global.dart' as g;
 import 'dispatch_list_screen.dart';
 import 'package:watch_team/screens/shifts/open_shift_screen.dart';
 import 'package:watch_team/screens/schedule/availability_screen.dart';
 import 'package:watch_team/screens/schedule/schedule_screen.dart';
-
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
@@ -20,63 +20,99 @@ class HomeDashboard extends StatefulWidget {
 }
 
 class _HomeDashboardState extends State<HomeDashboard> {
-
+  final ApiClient api = ApiClient(baseUrl: g.baseUrl);
 
   bool isTorchOn = false;
+  bool loadingShiftStatus = false;
+  int pendingShiftCount = 0;
+  int confirmedShiftCount = 0;
+
+  Map<String, dynamic>? profile;
+
+  @override
+  void initState() {
+    super.initState();
+    TorchLight.disableTorch();
+    profile = SessionData.userProfile;
+    loadShiftStatus();
+  }
+
   Future<void> _enableTorch(BuildContext context) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-
-
     try {
+      final available = await TorchLight.isTorchAvailable();
 
-      if(isTorchOn == false){
-        isTorchOn =true;
-        await TorchLight.enableTorch();
-
-      }else{
-        isTorchOn =false;
-        await TorchLight.disableTorch();
-
+      if (!available) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Flashlight is not available on this device'),
+          ),
+        );
+        return;
       }
 
-    } on Exception catch (_) {
+      if (!isTorchOn) {
+        await TorchLight.enableTorch();
+        if (!mounted) return;
+        setState(() {
+          isTorchOn = true;
+        });
+      } else {
+        await TorchLight.disableTorch();
+        if (!mounted) return;
+        setState(() {
+          isTorchOn = false;
+        });
+      }
+    } catch (e) {
       scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('Could not enable torch'),
+        SnackBar(
+          content: Text('Could not enable flashlight: $e'),
         ),
       );
     }
   }
 
   DateTime getMonday(DateTime date) {
-    // date.weekday: Mon=1, Tue=2, ... Sun=7
     return date.subtract(Duration(days: date.weekday - 1));
   }
 
-  Map<String, dynamic>? profile;
-  // Pop
+  String get companyId {
+    return (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+  }
 
-  // Future<void> _handleBackPressed(BuildContext context) async {
-  //   final shouldLogout = await _confirmLogoutDialog(context);
-  //
-  //   if (shouldLogout == true) {
-  //     // logout cleanup
-  //     SessionData.userProfile = null; // or SessionData.clear() if you have it
-  //
-  //     try { await TorchLight.disableTorch(); } catch (_) {}
-  //
-  //     // go to home.dart and clear navigation stack
-  //     if (!context.mounted) return;
-  //     Navigator.pop(context);
-  //
-  //   }
-  //   // if No => do nothing, remain on page
-  // }
-  // POP UP FOR LOGOUT
+  String get guardId {
+    return (SessionData.userProfile?['_id'] ?? '').toString();
+  }
+
+  Future<void> loadShiftStatus() async {
+    if (companyId.isEmpty || guardId.isEmpty) return;
+
+    if (mounted) setState(() => loadingShiftStatus = true);
+
+    try {
+      final results = await Future.wait([
+        api.listOpenShifts(companyId: companyId, guardId: guardId),
+        api.getMySchedule(companyId: companyId, guardId: guardId),
+      ]);
+
+      final openShifts = results[0];
+      final mySchedule = results[1];
+
+      if (!mounted) return;
+      setState(() {
+        pendingShiftCount = openShifts.length;
+        confirmedShiftCount = mySchedule.length;
+      });
+    } catch (e) {
+      debugPrint('Home dashboard shift status error: $e');
+    } finally {
+      if (mounted) setState(() => loadingShiftStatus = false);
+    }
+  }
+
   Future<bool?> showLogoutDialog(BuildContext context) {
-
-
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -88,7 +124,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
             decoration: BoxDecoration(
-              color: const Color(0xFF2A3558), // dark bluish
+              color: const Color(0xFF2A3558),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
@@ -101,7 +137,6 @@ class _HomeDashboardState extends State<HomeDashboard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon (doc + ?)
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -113,7 +148,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Icon(
-                        Icons.logout_rounded, // logout icon
+                        Icons.logout_rounded,
                         color: Colors.white70,
                         size: 30,
                       ),
@@ -143,9 +178,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 18),
-
                 const Text(
                   "Confirm!",
                   style: TextStyle(
@@ -164,9 +197,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                     height: 1.3,
                   ),
                 ),
-
                 const SizedBox(height: 22),
-
                 Row(
                   children: [
                     Expanded(
@@ -175,7 +206,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                         child: ElevatedButton(
                           onPressed: () => Navigator.of(ctx).pop(false),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE7EDF6), // light button
+                            backgroundColor: const Color(0xFFE7EDF6),
                             foregroundColor: const Color(0xFF1B1F2A),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -196,7 +227,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                         child: ElevatedButton(
                           onPressed: () => Navigator.of(ctx).pop(true),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE53935), // red button
+                            backgroundColor: const Color(0xFFE53935),
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -220,35 +251,14 @@ class _HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-
-
-  @override
-  void initState() {
-    // TODO: implement initState
-    TorchLight.disableTorch();
-
-    profile = SessionData.userProfile;
-
-  }
-
-
-
   @override
   Widget build(BuildContext context) {
-
     final worked = WorkedHoursService.calculate();
-    print("this is the timing i am seeing now");
-    print(worked["daily"].inSeconds);
-    print("SECONDS => ${worked['daily'].inSeconds}");
 
-    final dailyText =
-    WorkedHoursService.formatHHMM(worked["daily"]);
-
-    final weeklyText =
-    WorkedHoursService.formatHHMM(worked["weekly"]);
-
+    final dailyText = formatHHMMSS(worked["daily"]);
+    final weeklyText = formatHHMMSS(worked["weekly"]);
     final Map<int, Duration> byDay =
-    worked["byDay"];
+    Map<int, Duration>.from(worked["byDay"] ?? {});
 
     return PopScope(
       canPop: false,
@@ -258,7 +268,9 @@ class _HomeDashboardState extends State<HomeDashboard> {
         final ok = await showLogoutDialog(context);
         if (ok == true) {
           SessionData.userProfile = null;
-          try { await TorchLight.disableTorch(); } catch (_) {}
+          try {
+            await TorchLight.disableTorch();
+          } catch (_) {}
 
           if (!context.mounted) return;
           Navigator.of(context).pushNamedAndRemoveUntil(
@@ -269,97 +281,158 @@ class _HomeDashboardState extends State<HomeDashboard> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                // crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // WORKED HOURS
-                  Expanded(
-                    child: Container(
-                      margin: EdgeInsets.all(8),
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[800], // Background color
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Hours Worked', style: TextStyle( color: Colors.white ,fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                children: [
-                                  Text("Daily", style: TextStyle(color: Colors.white),),
-                                  Text(dailyText,style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
+        body: RefreshIndicator(
+          onRefresh: () async {
+            setState(() {});
+            await loadShiftStatus();
+          },
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Hours Worked',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                               ),
-                              Column(
-                                children: [
-                                  Text("Weekly", style: TextStyle(color: Colors.white),),
-                                  Text(weeklyText,style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
-                              ),
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      margin: EdgeInsets.all(8),
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[800], // Background color
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Shift Status', style: TextStyle( color: Colors.white ,fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                children: [
-                                  Text("Pending", style: TextStyle(color: Colors.white),),
-                                  Text("0",style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Text("Confirmed", style: TextStyle(color: Colors.white),),
-                                  Text("0",style: TextStyle(color: Colors.deepOrange,
-                                      fontWeight: FontWeight.bold, fontSize: 20), )
-                                ],
-                              ),
-                            ],
-                          )
-                        ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  children: [
+                                    const Text(
+                                      "Daily",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    Text(
+                                      dailyText,
+                                      style: const TextStyle(
+                                        color: Colors.deepOrange,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    )
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text(
+                                      "Weekly",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    Text(
+                                      weeklyText,
+                                      style: const TextStyle(
+                                        color: Colors.deepOrange,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-
-
-                ],
-              ),
-              // Charts
-
-               Padding(
-                 padding: const EdgeInsets.all(5.0),
-                 child: AspectRatio(
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'Shift Status',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                if (loadingShiftStatus)
+                                  const SizedBox(
+                                    height: 14,
+                                    width: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.deepOrange,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  children: [
+                                    const Text(
+                                      "Pending",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    Text(
+                                      pendingShiftCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.deepOrange,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    )
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text(
+                                      "Confirmed",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    Text(
+                                      confirmedShiftCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.deepOrange,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(5.0),
+                  child: AspectRatio(
                     aspectRatio: 1.1,
                     child: Card(
                       color: Colors.grey[800],
@@ -372,7 +445,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                           BarChartData(
                             groupsSpace: 5,
                             barTouchData: BarTouchData(enabled: true),
-                            gridData: FlGridData(show: true),
+                            gridData: const FlGridData(show: true),
                             borderData: FlBorderData(show: false),
                             titlesData: FlTitlesData(
                               leftTitles: AxisTitles(
@@ -383,7 +456,10 @@ class _HomeDashboardState extends State<HomeDashboard> {
                                   getTitlesWidget: (value, meta) {
                                     return Text(
                                       value.toInt().toString(),
-                                      style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 10,
+                                      ),
                                     );
                                   },
                                 ),
@@ -403,20 +479,19 @@ class _HomeDashboardState extends State<HomeDashboard> {
                                       return const SizedBox.shrink();
                                     }
 
-                                    // Today + index days
                                     final DateTime now = DateTime.now();
                                     final monday = getMonday(now);
-                                    final DateTime date = monday.add(Duration(days: index));
+                                    final DateTime date =
+                                    monday.add(Duration(days: index));
+                                    final label = DateFormat('MMM d').format(date);
 
-                                    final label = DateFormat('MMM d').format(date); // Example: "Nov 18"
-                                    // e.g. "Nov 17"
                                     return Padding(
-                                      padding: const EdgeInsets.only(top: 4.0, ),
-                                      child: RotatedBox(
-                                        quarterTurns: 0,
-                                        child: Text(
-                                          label,
-                                          style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                      padding: const EdgeInsets.only(top: 4.0),
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 10,
                                         ),
                                       ),
                                     );
@@ -424,153 +499,214 @@ class _HomeDashboardState extends State<HomeDashboard> {
                                 ),
                               ),
                             ),
-                            barGroups: _buildBarGroups(),
+                            barGroups: _buildBarGroups(byDay),
                           ),
                         ),
                       ),
                     ),
                   ),
-               ),
-
-
-              // Bottom
-              Expanded(
-                child: Container(
-                  width: double.maxFinite,
-                  margin: EdgeInsets.fromLTRB(8, 8, 8, 0),
-                  padding: EdgeInsets.all(1),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF222324), // Background color
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(12), bottom: Radius.circular(0)),
-                  ),
-                  child: SingleChildScrollView(
-                    child: Table(
+                ),
+                Expanded(
+                  child: Container(
+                    width: double.maxFinite,
+                    margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                    padding: const EdgeInsets.all(1),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF222324),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(12),
+                        bottom: Radius.circular(0),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Table(
                         border: TableBorder(
-                          horizontalInside: BorderSide(color: Colors.grey.shade800),
-                          verticalInside: BorderSide(color: Colors.grey.shade800),
+                          horizontalInside:
+                          BorderSide(color: Colors.grey.shade800),
+                          verticalInside:
+                          BorderSide(color: Colors.grey.shade800),
                         ),
                         children: [
                           TableRow(
-                              children: [
-                                GestureDetector(
-                                  onTap: (){
-                                    Navigator.pushNamed(context, '/events');
-                                  },
-                                  child: IconsText(iconType: Icons.event, itemName: "Events",),
-                                ),
-                                GestureDetector(
-                                  onTap: (){
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const DispatchListScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: IconsText(iconType: Icons.send_time_extension, itemName: "Dispatch",),
-                                ),
-                                IconsText(iconType: Icons.local_taxi, itemName: "Vehicle Patrol",),
-                              ]
-                          ),
-                          TableRow(
-                              children: [
-                                IconsText(iconType: Icons.policy, itemName: "Docs & Policies"),
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const ScheduleScreen()),
-                                    );
-                                  },
-                                  child: IconsText(iconType: Icons.event_note, itemName: "Schedule"),
-                                ),
-                                GestureDetector(
-                                  onTap: (){
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const OpenShiftScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: IconsText(iconType: Icons.av_timer, itemName: "Open Shifts",),
-                                ),
-
-                              ]
-                          ),
-                          TableRow(
-                              children: [
-                                InkWell(
-
-                                  onTap: (){
-                                    print(isTorchOn);
-                                    setState(() {
-                                      _enableTorch(context);
-
-                                    });
-                                  },
-                                  child: Container(
-                                    margin: EdgeInsets.symmetric(vertical: 15, horizontal: 5),
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                            margin: EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-                                            height:35,
-                                            width: 35,
-                                            decoration: BoxDecoration(color: Color(0xFF123458), borderRadius: BorderRadius.circular(10)),
-                                            child: Icon(isTorchOn?Icons.flashlight_on:Icons.flashlight_off, color: isTorchOn?Colors.deepOrange:Colors.white, size: 20,)),
-                                        Text("Flash Light", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white, )),
-                                      ],
+                            children: [
+                              IconsText(
+                                iconType: Icons.event,
+                                itemName: "Events",
+                                onTap: () {
+                                  Navigator.pushNamed(context, '/events');
+                                },
+                              ),
+                              IconsText(
+                                iconType: Icons.send_time_extension,
+                                itemName: "Dispatch",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const DispatchListScreen(),
                                     ),
+                                  );
+                                },
+                              ),
+                              const IconsText(
+                                iconType: Icons.local_taxi,
+                                itemName: "Vehicle Patrol",
+                              ),
+                            ],
+                          ),
+                          TableRow(
+                            children: [
+                              const IconsText(
+                                iconType: Icons.policy,
+                                itemName: "Docs & Policies",
+                              ),
+                              IconsText(
+                                iconType: Icons.event_note,
+                                itemName: "Schedule",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ScheduleScreen(),
+                                    ),
+                                  ).then((_) => loadShiftStatus());
+                                },
+                              ),
+                              IconsText(
+                                iconType: Icons.av_timer,
+                                itemName: "Open Shifts",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const OpenShiftScreen(),
+                                    ),
+                                  ).then((_) => loadShiftStatus());
+                                },
+                              ),
+                            ],
+                          ),
+                          TableRow(
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _enableTorch(context);
+                                  });
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 15,
+                                    horizontal: 5,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 0,
+                                          vertical: 8,
+                                        ),
+                                        height: 35,
+                                        width: 35,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF123458),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          isTorchOn
+                                              ? Icons.flashlight_on
+                                              : Icons.flashlight_off,
+                                          color: isTorchOn
+                                              ? Colors.deepOrange
+                                              : Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const Text(
+                                        "Flash Light",
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                IconsText(iconType: Icons.nest_cam_wired_stand, itemName: "Watch Mode",),
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const AvailabilityScreen()),
-                                    );
-                                  },
-                                  child: IconsText(iconType: Icons.event_available, itemName: "Availability"),
-                                ),
-                              ]
+                              ),
+                              IconsText(
+                                iconType: Icons.nest_cam_wired_stand,
+                                itemName: "Watch Mode",
+                                onTap: () {
+                                  Navigator.of(context, rootNavigator: true)
+                                      .pushNamed('/watchmode');
+                                },
+                              ),
+                              IconsText(
+                                iconType: Icons.event_available,
+                                itemName: "Availability",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                      const AvailabilityScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                           TableRow(
-                              children: [
-                                IconsText(iconType: Icons.alarm, itemName: "Remainders",),
-                                GestureDetector(
-                                  onTap: (){
-                                    Navigator.pushNamed(context, '/notes');
-                                  },
-                                  child: IconsText(iconType: Icons.edit_document, itemName: "Notes",),
-                                ),
-                                Text(""),
-                                // IconsText(iconType: Icons.attractions_outlined, itemName: "Availability",),
-                              ]
+                            children: [
+                              const IconsText(
+                                iconType: Icons.alarm,
+                                itemName: "Remainders",
+                              ),
+                              IconsText(
+                                iconType: Icons.edit_document,
+                                itemName: "Notes",
+                                onTap: () {
+                                  Navigator.pushNamed(context, '/notes');
+                                },
+                              ),
+                              const SizedBox.shrink(),
+                            ],
                           ),
-
-                        ]
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-
       ),
     );
   }
 }
 
-List<BarChartGroupData> _buildBarGroups() {
-  // Example weekly data
-  final values = [3.0, 4.5, 2.0, 5.0, 6.5, 4.0, 3.5];
+String formatHHMMSS(Duration duration) {
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60);
+  final seconds = duration.inSeconds.remainder(60);
+
+  return '${hours.toString().padLeft(2, '0')}:'
+      '${minutes.toString().padLeft(2, '0')}:'
+      '${seconds.toString().padLeft(2, '0')}';
+}
+
+List<BarChartGroupData> _buildBarGroups(Map<int, Duration> byDay) {
+  final values = List.generate(7, (index) {
+    final duration = byDay[index] ?? Duration.zero;
+    return duration.inMinutes / 60.0;
+  });
 
   return List.generate(values.length, (index) {
     return BarChartGroupData(
-
       x: index,
       barsSpace: 10,
       barRods: [
@@ -585,49 +721,57 @@ List<BarChartGroupData> _buildBarGroups() {
   });
 }
 
-
-
 class IconsText extends StatelessWidget {
-
-
   final IconData iconType;
   final String itemName;
   final VoidCallback? onTap;
-  // final Route link;
 
-
-  // final String formKey;
-  const IconsText({Key? key,  required this.iconType, required this.itemName, this.onTap}): super(key: key);
-
-
+  const IconsText({
+    super.key,
+    required this.iconType,
+    required this.itemName,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return  TableCell(
-      child: InkWell(
-        onTap: onTap,
-        // onTap: (){
-        //   print(itemName);
-        // },
-        child: Container(
-          margin: EdgeInsets.symmetric(vertical: 15, horizontal: 5),
-          child: Column(
-            children: [
-              Container(
-                  margin: EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-                  height:35,
-                  width: 35,
-                  decoration: BoxDecoration(color: Color(0xFF123458), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(iconType, color: Colors.white, size: 20,)),
-              Text(itemName, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white, )),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 5),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+              height: 35,
+              width: 35,
+              decoration: BoxDecoration(
+                color: const Color(0xFF123458),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                iconType,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            Text(
+              itemName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
-
 
 Future<bool> _isTorchAvailable(BuildContext context) async {
   final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -644,8 +788,6 @@ Future<bool> _isTorchAvailable(BuildContext context) async {
   }
 }
 
-
-
 Future<void> _disableTorch(BuildContext context) async {
   final scaffoldMessenger = ScaffoldMessenger.of(context);
 
@@ -659,8 +801,3 @@ Future<void> _disableTorch(BuildContext context) async {
     );
   }
 }
-
-
-
-
-

@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
-
+import 'package:watch_team/screens/site_tour_qr_scan_screen.dart';
+import 'package:watch_team/screens/site_tours_screen.dart';
 
 
 class ScanTagScreen extends StatelessWidget {
-  const ScanTagScreen({super.key});
+  final String? postSiteId;
+  final String? postSiteName;
+
+  const ScanTagScreen({
+    super.key,
+     this.postSiteId,
+     this.postSiteName,
+  });
+
 
   @override
   Widget build(BuildContext context) {
@@ -87,13 +96,31 @@ class ScanTagScreen extends StatelessWidget {
                           },
                         ),
                         const SizedBox(height: 12),
-                        ScanOptionTile(
-                          icon: Icons.qr_code_rounded,
-                          title: "Scan QR Tag",
-                          onTap: () {
-                            // TODO: open QR scanner
-                          },
-                        ),
+                         ScanOptionTile(
+                            icon: Icons.qr_code_rounded,
+                            title: "Scan QR Tag",
+                            onTap: () {
+                              if (postSiteId == null || postSiteId!.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please open Scan Tag from a Post Site.'),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SiteToursScreen(
+                                    postSiteId: postSiteId!,
+                                    postSiteName: postSiteName ?? 'Post Site',
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
                         const SizedBox(height: 12),
                         ScanOptionTile(
                           icon: Icons.sync_alt_rounded,

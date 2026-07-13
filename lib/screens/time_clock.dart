@@ -14,16 +14,67 @@ class TimeClock extends StatefulWidget {
 class _TimeClockState extends State<TimeClock> {
   Duration _elapsed = Duration.zero;   // work time
   Duration _teaBreak = Duration.zero;  // break time
+  Duration _remaining = Duration.zero;  // selected shift remaining time
+  Duration _overTime = Duration.zero;   // time worked after shift end
 
 
   Timer? _timer;        // work timer
   Timer? _breakTimer;   // break timer
+  Timer? _remainingTimer; // shift countdown timer
 
   bool _isRunning = false; // currently counting work time
   bool _takeBreak = false;
   late String startClockTime;
   late String endClockTime;
   // currently on break
+
+
+  DateTime? _todayShiftDateTime(String? timeText) {
+    if (timeText == null || timeText.trim().isEmpty) return null;
+    final parts = timeText.trim().split(":");
+    if (parts.length < 2) return null;
+    final now = DateTime.now();
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  }
+
+  Duration _shiftDuration() {
+    final shift = SessionData.selectedShift;
+    if (shift == null) return Duration.zero;
+    final start = _todayShiftDateTime(shift['startTime']?.toString());
+    var end = _todayShiftDateTime(shift['endTime']?.toString());
+    if (start == null || end == null) return Duration.zero;
+    if (end.isBefore(start)) end = end.add(const Duration(days: 1));
+    return end.difference(start);
+  }
+
+  void _refreshRemaining() {
+    final duration = _shiftDuration();
+    final left = duration - _elapsed;
+    setState(() {
+      _remaining = left.isNegative ? Duration.zero : left;
+      _overTime = left.isNegative ? left.abs() : Duration.zero;
+    });
+  }
+
+  bool _canClockInSelectedShift() {
+    final shift = SessionData.selectedShift;
+    if (shift == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select an open shift before clocking in.")),
+      );
+      return false;
+    }
+    final start = _todayShiftDateTime(shift['startTime']?.toString());
+    if (start != null && DateTime.now().isBefore(start.subtract(const Duration(hours: 1)))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("You can only clock in 1 hour before ${shift['startTime']}")),
+      );
+      return false;
+    }
+    return true;
+  }
 
   // Start (Clock In): reset counters and begin work timer
 
@@ -74,6 +125,8 @@ class _TimeClockState extends State<TimeClock> {
     setState(() {
       _elapsed = Duration.zero;
       _teaBreak = Duration.zero;
+      _remaining = _shiftDuration();
+      _overTime = Duration.zero;
       _takeBreak = false;
       _isRunning = true;
     });
@@ -82,6 +135,12 @@ class _TimeClockState extends State<TimeClock> {
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() => _elapsed += const Duration(seconds: 1));
+      _refreshRemaining();
+    });
+
+    _remainingTimer?.cancel();
+    _remainingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _refreshRemaining();
     });
   }
 
@@ -89,11 +148,13 @@ class _TimeClockState extends State<TimeClock> {
   void _stopTimer() async {
     _timer?.cancel();
     _breakTimer?.cancel();
+    _remainingTimer?.cancel();
     DateTime stopNow = DateTime.now();
     // Capture results
     final work = _elapsed;
     final brk  = _teaBreak;
     final total = work + brk;
+    final overtime = _overTime;
     endClockTime = DateFormat('HH:mm:ss').format(stopNow);
 
     // Build a readable message
@@ -219,6 +280,7 @@ class _TimeClockState extends State<TimeClock> {
   void dispose() {
     _timer?.cancel();
     _breakTimer?.cancel();
+    _remainingTimer?.cancel();
     super.dispose();
   }
 
@@ -309,11 +371,11 @@ class _TimeClockState extends State<TimeClock> {
                         ],
                       ),
                       Column(
-                        children: const [
-                          Text("Remaining Time",
+                        children: [
+                          const Text("Remaining Time",
                               style: TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold)),
-                          Text("00:00:00",
-                              style: TextStyle(fontSize: 30, color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text(_formatDuration(_remaining),
+                              style: const TextStyle(fontSize: 30, color: Colors.white, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],
@@ -330,6 +392,12 @@ class _TimeClockState extends State<TimeClock> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text("Overtime: ${_formatDuration(_overTime)}",
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
           ),
           const SizedBox(height: 15),
 
@@ -388,7 +456,7 @@ class _TimeClockState extends State<TimeClock> {
           )
               : GestureDetector(
             onLongPress: (){
-              if (SessionData.clockedIn == true) {
+              if (SessionData.clockedIn == true && _canClockInSelectedShift()) {
                 _startTimer();
               } else {
                 notCheckedIn();

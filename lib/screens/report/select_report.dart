@@ -124,10 +124,9 @@ class _SelectReportScreenState extends State<SelectReportScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => ReportFormScreen(
-                              reportTitle:
-                              (item['title'] ?? '').toString(),
-                              templateId:
-                              (item['_id'] ?? '').toString(),
+                              reportTitle: (item['title'] ?? '').toString(),
+                              templateId: (item['_id'] ?? '').toString(),
+                              category: (item['category'] ?? 'general').toString(),
                             ),
                           ),
                         );
@@ -227,6 +226,8 @@ class _TemplateCard extends StatelessWidget {
         return Colors.blueGrey;
       case 'nfc':
         return Colors.purple;
+      case 'code_red':
+        return Colors.red;
       default:
         return Colors.grey;
     }

@@ -6,6 +6,7 @@ class SessionData {
   static String? checkID;
   static bool? clockedIn;
   static String? postSiteID;
+  static Map<String, dynamic>? selectedShift;
 
   static void clear() {
     userProfile = null;
@@ -14,6 +15,7 @@ class SessionData {
     clockedIn = false;
     checkID = null;
     postSiteID = null;
+    selectedShift = null;
 
   }
 }

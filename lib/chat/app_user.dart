@@ -34,16 +34,28 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> j) {
     final created = j["createdAt"];
     DateTime dt;
+
     if (created is String) {
       dt = DateTime.tryParse(created) ?? DateTime.now();
     } else {
       dt = DateTime.now();
     }
 
+    String cleanId(dynamic value) {
+      if (value == null) return "";
+
+      if (value is Map) {
+        if (value["_id"] != null) return value["_id"].toString();
+        if (value[r"$oid"] != null) return value[r"$oid"].toString();
+      }
+
+      return value.toString();
+    }
+
     return ChatMessage(
-      id: j["_id"].toString(),
-      chatId: j["chatId"].toString(),
-      senderId: j["senderId"].toString(),
+      id: cleanId(j["_id"]),
+      chatId: cleanId(j["chatId"]),
+      senderId: cleanId(j["senderId"]),
       body: (j["body"] ?? "").toString(),
       createdAt: dt,
       pending: false,

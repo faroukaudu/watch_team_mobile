@@ -65,7 +65,13 @@ class _AllReportsState extends State<AllReports> {
   }
 
   _Badge _badgeForCategory(String category) {
-    switch (category.toLowerCase()) {
+    final normalized = category
+        .trim()
+        .toLowerCase()
+        .replaceAll('-', '_')
+        .replaceAll(' ', '_');
+
+    switch (normalized) {
       case 'standard':
         return const _Badge('STANDARD', Color(0xFF00C853));
       case 'incident':
@@ -76,8 +82,21 @@ class _AllReportsState extends State<AllReports> {
         return const _Badge('LOG', Color(0xFF607D8B));
       case 'nfc':
         return const _Badge('NFC', Color(0xFF9C27B0));
+      case 'code_red':
+        return const _Badge('CODE RED', Color(0xFFFF3D00));
       default:
-        return const _Badge('GENERAL', Color(0xFF9E9E9E));
+        final fallbackText = category.trim().isEmpty
+            ? 'GENERAL'
+            : category
+            .trim()
+            .replaceAll('_', ' ')
+            .replaceAll('-', ' ')
+            .toUpperCase();
+
+        return _Badge(
+          fallbackText,
+          const Color(0xFF9E9E9E),
+        );
     }
   }
 
@@ -93,6 +112,8 @@ class _AllReportsState extends State<AllReports> {
         return 'Log Report';
       case 'nfc':
         return 'NFC Report';
+      case 'code_red':
+        return 'Code Red';
       default:
         return 'General Report';
     }

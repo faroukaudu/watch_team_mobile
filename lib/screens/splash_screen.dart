@@ -1,26 +1,92 @@
-
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watch_team/screens/home.dart';
 import '../routes.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(title: Text("Home")),
       body: AnimatedSplashScreen(
-            splash: CustomSplashContent(),
-            splashIconSize: 180.0,
-            duration: 5000,
-            nextScreen: LoginScreen(),
-            splashTransition: SplashTransition.scaleTransition,
-            pageTransitionType: PageTransitionType.bottomToTop,
-            backgroundColor: Colors.black,
-        ),
+        splash: const CustomSplashContent(),
+        splashIconSize: 180.0,
+        duration: 5000,
+        nextScreen: const AuthCheckScreen(),
+        splashTransition: SplashTransition.scaleTransition,
+        pageTransitionType: PageTransitionType.bottomToTop,
+        backgroundColor: Colors.black,
+      ),
+    );
+  }
+}
 
+class AuthCheckScreen extends StatefulWidget {
+  const AuthCheckScreen({super.key});
+
+  @override
+  State<AuthCheckScreen> createState() => _AuthCheckScreenState();
+}
+
+class _AuthCheckScreenState extends State<AuthCheckScreen> {
+  @override
+  void initState() {
+    super.initState();
+    checkLoginStatus();
+  }
+
+  Future<void> checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final userId = prefs.getString('userId');
+
+    if (!mounted) return;
+
+    if (isLoggedIn && userId != null && userId.isNotEmpty) {
+      try {
+        final profileLoaded = await fetchUserProfile(userId);
+
+        if (!mounted) return;
+
+        if (profileLoaded == true) {
+          Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+        } else {
+          await prefs.clear();
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => LoginScreen()),
+          );
+        }
+      } catch (e) {
+        await prefs.clear();
+
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => LoginScreen()),
+        );
+      }
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => LoginScreen()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }
@@ -29,7 +95,7 @@ class CustomSplashContent extends StatefulWidget {
   const CustomSplashContent({super.key});
 
   @override
-  _CustomSplashContentState createState() => _CustomSplashContentState();
+  State<CustomSplashContent> createState() => _CustomSplashContentState();
 }
 
 class _CustomSplashContentState extends State<CustomSplashContent> {
@@ -39,8 +105,9 @@ class _CustomSplashContentState extends State<CustomSplashContent> {
   void initState() {
     super.initState();
 
-    // Delay the fade-in of the text
-    Future.delayed(Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+
       setState(() {
         _opacity = 1.0;
       });
@@ -53,16 +120,16 @@ class _CustomSplashContentState extends State<CustomSplashContent> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(
-            child:Hero(
-              tag: "logo",
-                child: Image.asset('images/logonew.png', height: 150)
-            ),
+          child: Hero(
+            tag: "logo",
+            child: Image.asset('images/logonew.png', height: 150),
+          ),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
         AnimatedOpacity(
-          duration: Duration(seconds: 1),
+          duration: const Duration(seconds: 1),
           opacity: _opacity,
-          child: Text(
+          child: const Text(
             'Watch Team',
             style: TextStyle(
               fontSize: 24,
@@ -76,5 +143,3 @@ class _CustomSplashContentState extends State<CustomSplashContent> {
     );
   }
 }
-
-

@@ -6,6 +6,7 @@ import "package:watch_team/chat/chat_socket.dart";            // ✅ your ChatSo
 
 import "package:watch_team/chat/chat_api.dart";
 import "package:watch_team/chat/app_user.dart";
+import "package:watch_team/services/notification_helper.dart";
 
 // import 'package:watch_team/chat/app_user.dart';
 
@@ -85,6 +86,13 @@ class _ChatPageState extends State<ChatPage> {
       });
 
       _scrollToBottom();
+
+      if (msg.senderId != widget.myUserId) {
+        NotificationHelper.show(
+          title: widget.otherUser.name,
+          body: msg.body,
+        );
+      }
     });
 
 
@@ -192,7 +200,7 @@ class _ChatPageState extends State<ChatPage> {
               itemCount: _messages.length,
               itemBuilder: (ctx, i) {
                 final m = _messages[i];
-                final isMe = m.senderId == widget.myUserId;
+                final isMe = m.senderId.toString().trim() == widget.myUserId.toString().trim();
                 return _Bubble(
                   text: m.body,
                   isMe: isMe,

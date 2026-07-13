@@ -434,11 +434,13 @@ ReportFormSchema schemaForTitle(String reportTitle) {
 class ReportFormScreen extends StatefulWidget {
   final String reportTitle;
   final String? templateId;
+  final String category;
 
   const ReportFormScreen({
     super.key,
     required this.reportTitle,
     this.templateId,
+    this.category = 'general',
   });
 
   @override
@@ -459,6 +461,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   final Map<String, TextEditingController> controllers = {};
 
   bool fabOpen = false;
+  bool get isCodeRed => widget.category.toLowerCase() == 'code_red';
 
   final mediaCapture = MediaCaptureService();
   final galleryPicker = GalleryPickerService();
@@ -823,11 +826,18 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
       values['postSiteId'] = SessionData.postSiteID;
 
+      // values['postSiteId'] = SessionData.postSiteID ?? SessionData.postSiteId ?? '';
+      if (isCodeRed) {
+        values['category'] = 'code_red';
+      }
+
       final fieldsForMongo = Map<String, dynamic>.from(values);
       fieldsForMongo.remove('signature');
 
       final safeFields = makeJsonSafeMap(fieldsForMongo);
 
+      debugPrint('POST SITE ID SENT: ${values['postSiteId']}');
+      debugPrint('FIELDS SENT: $safeFields');
       final reportId = await api.createReport(
         title: schema?.title ?? widget.reportTitle,
         fields: safeFields,
@@ -1193,6 +1203,32 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (isCodeRed)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.red),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'This Code Red report will be immediately emailed to all staff recipients for this post site.',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 SizedBox(
                   height: 52,
                   width: double.infinity,

@@ -1,4 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:watch_team/global.dart';
+import 'package:watch_team/services/api_client.dart';
+import 'package:watch_team/services/notification_helper.dart';
 import 'package:torch_light/torch_light.dart';
 import '../postsite_navigator.dart';
 import 'package:watch_team/session_data.dart';
@@ -8,13 +13,16 @@ import '../main.dart';
 import 'home-dash.dart';
 import 'post_site.dart';
 import 'time_clock.dart';
+import 'package:watch_team/widgets/security_drawer.dart';
 import 'chat.dart';
+
 
 var externalProfile = SessionData.userProfile;
 var company = SessionData.companyInfo;
 
 class DashBoardScreen extends StatefulWidget {
   static int initialIndex = 0;
+
 
   const DashBoardScreen({super.key});
 
@@ -23,7 +31,12 @@ class DashBoardScreen extends StatefulWidget {
 }
 
 class _DashBoardScreenState extends State<DashBoardScreen> {
+  final ApiClient notificationApi = ApiClient(baseUrl: baseUrl);
+  int notificationCount = 0;
+  List<Map<String, dynamic>> notificationList = [];
   bool isTorchOn = false;
+  Timer? _notificationTimer;
+
 
   Future<void> _enableTorch(BuildContext context) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -55,6 +68,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     TorchLight.disableTorch();
     profile = SessionData.userProfile;
     super.initState();
+    loadNotifications();
+    _notificationTimer = Timer.periodic(const Duration(seconds: 15), (_) => loadNotifications());
 
     // ✅ This now controls the bottom navigation selected tab
     _selectedindex = DashBoardScreen.initialIndex;
@@ -73,6 +88,64 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     'Time Clock',
     'Messenger',
   ];
+
+
+
+  Future<void> loadNotifications() async {
+    try {
+      final companyId = (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+      final viewerId = (SessionData.userProfile?['_id'] ?? '').toString();
+      final data = await notificationApi.listNotifications(companyId: companyId, viewerId: viewerId);
+      final items = data['notifications'] is List ? data['notifications'] as List : [];
+      final oldCount = notificationCount;
+      setState(() {
+        notificationList = items.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        notificationCount = int.tryParse((data['unread'] ?? 0).toString()) ?? 0;
+      });
+      if (notificationCount > oldCount) {
+        NotificationHelper.show(
+          title: 'New Activity',
+          body: 'You have a new Watch Team notification',
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> openNotifications() async {
+    final companyId = (SessionData.userProfile?['assignedCompanyID'] ?? '').toString();
+    final viewerId = (SessionData.userProfile?['_id'] ?? '').toString();
+    await loadNotifications();
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF123458),
+      builder: (_) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          shrinkWrap: true,
+          children: [
+            const Text('Notifications', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            if (notificationList.isEmpty)
+              const Text('No notifications found', style: TextStyle(color: Colors.white70)),
+            ...notificationList.map((item) => ListTile(
+              leading: const Icon(Icons.notifications, color: Colors.white),
+              title: Text((item['message'] ?? item['type'] ?? 'Activity').toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              subtitle: Text((item['name'] ?? item['email'] ?? '').toString(), style: const TextStyle(color: Colors.white70)),
+            )),
+          ],
+        ),
+      ),
+    );
+    await notificationApi.clearNotifications(companyId: companyId, viewerId: viewerId);
+    setState(() => notificationCount = 0);
+  }
+
+  @override
+  void dispose() {
+    _notificationTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,178 +167,57 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           ),
           centerTitle: true,
           actions: [
-            IconButton(
-              icon: Icon(Icons.notifications_on),
-              onPressed: () {
-                print("Ap Bar");
-              },
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_on),
+                  onPressed: openNotifications,
+                ),
+                if (notificationCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                      child: Text('$notificationCount', style: const TextStyle(color: Colors.white, fontSize: 10)),
+                    ),
+                  ),
+              ],
             )
           ],
         ),
-        drawer: SafeArea(
-          child: Drawer(
-            backgroundColor: Colors.black,
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: BoxDecoration(
-                    color: Colors.blueGrey,
-                    image: DecorationImage(
-                      image: AssetImage('images/drawer-head.jpg'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.account_circle, size: 60, color: Colors.white),
-                      Expanded(
-                        child: Container(
-                          margin: EdgeInsets.symmetric(horizontal: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "${profile!['fullname']}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                ),
-                              ),
-                              Text(
-                                "${profile!['username']}",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              Text(
-                                "${profile!['phone']}",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  margin: EdgeInsets.fromLTRB(20, 15, 0, 10),
-                  child: Text("MANAGE"),
-                ),
-                ListTile(
-                  leading: Icon(Icons.home, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Home",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                  visualDensity: VisualDensity(vertical: -3),
-                  onTap: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _selectedindex = 0;
-                      DashBoardScreen.initialIndex = 0;
-                    });
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.house, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Select Company",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                  visualDensity: VisualDensity(vertical: -3),
-                  onTap: () {
-                    Navigator.pop(context);
+        drawer: SecurityDrawer(
+          onHome: () {
+            Navigator.pop(context);
 
-                    // ✅ 1 = Post Site tab
-                    DashBoardScreen.initialIndex = 1;
+            setState(() {
+              _selectedindex = 0;
+              DashBoardScreen.initialIndex = 0;
+            });
+          },
 
-                    // ✅ Reopen dashboard shell, not PostSite alone
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const DashBoardScreen(),
-                      ),
-                          (route) => false,
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Settings",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                  visualDensity: VisualDensity(vertical: -3),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 15),
-                  child: Divider(thickness: 0.5, height: 10, color: Colors.white24),
-                ),
-                ListTile(
-                  leading: Icon(Icons.house, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Chat Support",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity(vertical: -4),
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Email Support",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity(vertical: -4),
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Support Center",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity(vertical: -4),
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Feedback",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity(vertical: -4),
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "Share App",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity(vertical: -4),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 15),
-                  child: Divider(thickness: 0.5, height: 10, color: Colors.white24),
-                ),
-                ListTile(
-                  leading: Icon(Icons.house, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "About Watch Team",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity(vertical: -4),
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings, size: 25, color: Colors.blueGrey),
-                  title: Text(
-                    "App Version",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity(vertical: -4),
-                ),
-              ],
-            ),
-          ),
+          onSelectCompany: () {
+            Navigator.pop(context);
+
+            DashBoardScreen.initialIndex = 1;
+
+            setState(() {
+              _selectedindex = 1;
+            });
+          },
+
+          onLogout: () async {
+            SessionData.userProfile = null;
+            SessionData.companyInfo = null;
+
+            if (!context.mounted) return;
+
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/',
+                  (route) => false,
+            );
+          },
         ),
         body: IndexedStack(
           index: _selectedindex,
@@ -309,6 +261,8 @@ class IconsText extends StatelessWidget {
     required this.iconType,
     required this.itemName,
   }) : super(key: key);
+
+  @override
 
   @override
   Widget build(BuildContext context) {

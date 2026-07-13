@@ -394,6 +394,30 @@ class ApiClient {
 
 
 
+
+  Future<Map<String, dynamic>> listNotifications({
+    required String companyId,
+    required String viewerId,
+  }) async {
+    final res = await _dio.get('/api/notifications', queryParameters: {
+      'companyId': companyId,
+      'viewerId': viewerId,
+    });
+
+    if (res.data is Map) return Map<String, dynamic>.from(res.data);
+    throw Exception('Unexpected notifications response: ${res.data}');
+  }
+
+  Future<void> clearNotifications({
+    required String companyId,
+    required String viewerId,
+  }) async {
+    await _dio.post('/api/notifications/clear', data: {
+      'companyId': companyId,
+      'viewerId': viewerId,
+    });
+  }
+
 //   Shifts
   Future<List<Map<String, dynamic>>> listOpenShifts({
     required String companyId,
@@ -609,6 +633,139 @@ class ApiClient {
 
     throw Exception('Unexpected complete task response: ${res.data}');
   }
+
+  Future<Map<String, dynamic>> getWatchModeCloudinarySign({
+    required String watchModeTempId,
+    required String kind,
+  }) async {
+    final res = await _dio.post('/uploads/cloudinary-sign', data: {
+      'moduleType': 'watchmode',
+      'watchModeTempId': watchModeTempId,
+      'kind': kind,
+    });
+
+    if (res.data is Map) return Map<String, dynamic>.from(res.data);
+    throw Exception('Unexpected watchmode cloudinary sign response: ${res.data}');
+  }
+
+
+  Future<Map<String, dynamic>> createWatchMode({
+    required Map<String, dynamic> payload,
+  }) async {
+    final res = await _dio.post('/api/watchmode/create', data: payload);
+
+    if (res.data is Map) return Map<String, dynamic>.from(res.data);
+    throw Exception('Unexpected createWatchMode response: ${res.data}');
+  }
+
+  Future<Map<String, dynamic>> getDAR({
+    required String companyId,
+    required String date,
+    String postSiteId = 'all',
+  }) async {
+    final res = await _dio.get(
+      '/api/dar',
+      queryParameters: {
+        'companyId': companyId,
+        'date': date,
+        'postSiteId': postSiteId,
+      },
+    );
+
+    if (res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+
+    throw Exception('Unexpected DAR response');
+  }
+
+  Future<void> resendCodeRedReportEmail(
+      String reportId,
+      ) async {
+    try {
+      final response = await _dio.post(
+        '/reports/$reportId/resend-code-red-email',
+      );
+
+      final data = response.data;
+
+      if (data is Map && data['ok'] != true) {
+        throw Exception(
+          data['error']?.toString() ??
+              'Unable to resend Code Red email',
+        );
+      }
+    } on DioException catch (error) {
+      final data = error.response?.data;
+
+      if (data is Map && data['error'] != null) {
+        throw Exception(data['error'].toString());
+      }
+
+      throw Exception(
+        'Unable to resend Code Red email',
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> guardPhoneSignIn({
+    required String phone,
+    required String password,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/guard-phone-signin',
+        data: {
+          'phone': phone.trim(),
+          'password': password,
+        },
+      );
+
+      return Map<String, dynamic>.from(
+        response.data as Map,
+      );
+    } on DioException catch (error) {
+      final data = error.response?.data;
+
+      if (data is Map && data['message'] != null) {
+        throw Exception(data['message'].toString());
+      }
+
+      throw Exception(
+        'Unable to sign in. Please try again.',
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>>
+  selectGuardPhoneLoginAccount({
+    required String userId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/guard-phone-signin/select-account',
+        data: {
+          'userId': userId,
+        },
+      );
+
+      return Map<String, dynamic>.from(
+        response.data as Map,
+      );
+    } on DioException catch (error) {
+      final data = error.response?.data;
+
+      if (data is Map && data['message'] != null) {
+        throw Exception(data['message'].toString());
+      }
+
+      throw Exception(
+        'Unable to select the guard account.',
+      );
+    }
+  }
+
+
 
 
 

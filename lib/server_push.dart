@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:watch_team/global.dart' as g;
 import '../server_push.dart';
 import 'screens/home.dart';
+import 'package:watch_team/session_data.dart';
 
 class TimeClockPush {
 
@@ -42,6 +43,10 @@ class TimeClockPush {
           'startT':startTimer,
           'stopT':stopTimer,
           'docId':docId,
+          'shiftTemplateId': SessionData.selectedShift?['_id']?.toString(),
+          'shiftTitle': SessionData.selectedShift?['shiftTitle']?.toString(),
+          'shiftStartTime': SessionData.selectedShift?['startTime']?.toString(),
+          'shiftEndTime': SessionData.selectedShift?['endTime']?.toString(),
         }),
       );
 
