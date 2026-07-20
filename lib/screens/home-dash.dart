@@ -11,6 +11,7 @@ import 'dispatch_list_screen.dart';
 import 'package:watch_team/screens/shifts/open_shift_screen.dart';
 import 'package:watch_team/screens/schedule/availability_screen.dart';
 import 'package:watch_team/screens/schedule/schedule_screen.dart';
+import 'package:watch_team/screens/reminder_screen.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
@@ -661,9 +662,17 @@ class _HomeDashboardState extends State<HomeDashboard> {
                           ),
                           TableRow(
                             children: [
-                              const IconsText(
-                                iconType: Icons.alarm,
-                                itemName: "Remainders",
+                              IconsText(
+                                iconType: Icons.alarm_rounded,
+                                itemName: "Reminders",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ReminderScreen(),
+                                    ),
+                                  );
+                                },
                               ),
                               IconsText(
                                 iconType: Icons.edit_document,

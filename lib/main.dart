@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '/routes.dart';
 import 'package:watch_team/services/notification_helper.dart';
+import 'package:watch_team/services/reminder_service.dart';
 // AIzaSyASbZIITafeYZViSsD0PqqPcUVaX_dabm8
 // API KEY
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() async{
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +14,7 @@ void main() async{
     DeviceOrientation.portraitUp,
   ]);
   await NotificationHelper.init();
+  await ReminderService.init(navigatorKey: appNavigatorKey);
   runApp(MyApp());
 }
 // Extend AppColors with dark theme values
@@ -54,6 +58,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       theme: myDarkTheme,
       debugShowCheckedModeBanner: false,
       title: 'Named Routes Demo',

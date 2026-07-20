@@ -8,6 +8,9 @@ import 'package:watch_team/global.dart' as g;
 import 'package:watch_team/services/worked_hours_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watch_team/screens/auth/forgot_password_email_screen.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import '../services/api_client.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -910,36 +913,140 @@ class EmailForm extends StatelessWidget {
   }
 }
 
-Future<Map<String, dynamic>> signInRequest(String email, String password) async {
-  final url = Uri.parse('${g.baseUrl}/guard-signin');
+Future<Map<String, dynamic>> signInRequest(
+    String email,
+    String password,
+    ) async {
+  final normalizedEmail = email.trim();
 
-  try {
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'username': email,
-        'password': password,
-      }),
-    );
-
-    final data = jsonDecode(response.body);
-
-    return {
-      'success': response.statusCode == 200 && data['success'] == true,
-      'message': data['message'] ?? 'Login failed',
-      'email': data['email'],
-      'id': data['userId'],
-    };
-  } catch (e) {
+  if (normalizedEmail.isEmpty || password.isEmpty) {
     return {
       'success': false,
-      'message': 'Unable to connect to server. Please try again.',
+      'message': 'Please enter your email and password.',
       'email': null,
       'id': null,
     };
+  }
+
+  final url = Uri.parse(
+    '${g.baseUrl}/guard-signin',
+  );
+
+  try {
+    final response = await http
+        .post(
+      url,
+      headers: const {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'username': normalizedEmail,
+        'password': password,
+      }),
+    )
+        .timeout(
+      const Duration(seconds: 20),
+    );
+
+    Map<String, dynamic> data = {};
+
+    try {
+      final decodedResponse = jsonDecode(response.body);
+
+      if (decodedResponse is Map) {
+        data = Map<String, dynamic>.from(
+          decodedResponse,
+        );
+      }
+    } catch (error) {
+      debugPrint(
+        'Unable to decode login response: $error',
+      );
+
+      debugPrint(
+        'Raw login response: ${response.body}',
+      );
+    }
+
+    final message =
+        data['message']?.toString() ??
+            _getLoginErrorMessage(response.statusCode);
+
+    final userId =
+        data['userId']?.toString() ??
+            data['id']?.toString();
+
+    return {
+      'success':
+      response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          data['success'] == true,
+      'message': message,
+      'email':
+      data['email']?.toString() ??
+          normalizedEmail,
+      'id': userId,
+      'statusCode': response.statusCode,
+    };
+  } on TimeoutException {
+    return {
+      'success': false,
+      'message':
+      'The server took too long to respond. Please try again.',
+      'email': null,
+      'id': null,
+    };
+  } on SocketException catch (error) {
+    debugPrint(
+      'Mobile login connection error: $error',
+    );
+
+    return {
+      'success': false,
+      'message':
+      'The app cannot reach the Watch Team server.',
+      'email': null,
+      'id': null,
+    };
+  } catch (error, stackTrace) {
+    debugPrint(
+      'Mobile guard login error: $error',
+    );
+
+    debugPrintStack(
+      stackTrace: stackTrace,
+    );
+
+    return {
+      'success': false,
+      'message':
+      'Unable to sign in. Please try again.',
+      'email': null,
+      'id': null,
+    };
+  }
+}
+
+String _getLoginErrorMessage(int statusCode) {
+  switch (statusCode) {
+    case 400:
+      return 'Please enter your email and password.';
+
+    case 401:
+      return 'The email or password is incorrect.';
+
+    case 403:
+      return 'This guard account is inactive or not authorized for mobile login.';
+
+    case 404:
+      return 'The mobile login service was not found.';
+
+    case 500:
+      return 'The server encountered an error. Please try again.';
+
+    default:
+      return 'Login failed. Server response: $statusCode.';
   }
 }
 

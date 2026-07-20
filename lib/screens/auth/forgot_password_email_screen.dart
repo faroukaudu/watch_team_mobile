@@ -365,23 +365,31 @@ class _ForgotPasswordEmailScreenState
               crossAxisAlignment:
                   CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: const Color(
-                      0xFF0F3DFF,
-                    ).withOpacity(0.14),
-                    borderRadius:
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Hero(
+                        tag: "navi-logo",
+                        child: Image.asset("images/logonew.png", width: 90, height: 90,)),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(
+                          0xFF0F3DFF,
+                        ).withOpacity(0.14),
+                        borderRadius:
                         BorderRadius.circular(18),
-                  ),
-                  child: const Icon(
-                    Icons.lock_reset_rounded,
-                    color: Color(0xFF6D8BFF),
-                    size: 31,
-                  ),
+                      ),
+                      child: const Icon(
+                        Icons.lock_reset_rounded,
+                        color: Color(0xFF6D8BFF),
+                        size: 31,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 50),
                 const Text(
                   'Forgot your password?',
                   style: TextStyle(

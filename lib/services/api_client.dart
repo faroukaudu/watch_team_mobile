@@ -771,3 +771,90 @@ class ApiClient {
 
 
 }
+// Vehicle Patrol (duration + manual counter; no GPS)
+extension VehiclePatrolApi on ApiClient {
+  Future<List<Map<String, dynamic>>> listVehiclePatrols({
+    required String companyId,
+    required String guardId,
+    String postSiteId = '',
+  }) async {
+    final res = await _dio.get('/api/mobile/vehicle-patrol', queryParameters: {
+      'companyId': companyId,
+      'guardId': guardId,
+      if (postSiteId.isNotEmpty) 'postSiteId': postSiteId,
+    });
+    final data = res.data;
+    if (data is Map && data['patrols'] is List) {
+      return (data['patrols'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+    throw Exception('Unexpected vehicle patrol response: $data');
+  }
+
+  Future<Map<String, dynamic>> startVehiclePatrol({
+    required String patrolId,
+    required String companyId,
+    required String guardId,
+    required String guardName,
+  }) async {
+    final res = await _dio.post('/api/mobile/vehicle-patrol/$patrolId/start', data: {
+      'companyId': companyId,
+      'guardId': guardId,
+      'guardName': guardName,
+    });
+    if (res.data is Map) return Map<String, dynamic>.from(res.data as Map);
+    throw Exception('Unexpected start patrol response: ${res.data}');
+  }
+
+  Future<Map<String, dynamic>> updateVehiclePatrolSession({
+    required String patrolId,
+    required String sessionId,
+    required String companyId,
+    required String guardId,
+    required String action,
+    required int counter,
+    String notes = '',
+  }) async {
+    final res = await _dio.patch(
+      '/api/mobile/vehicle-patrol/$patrolId/session/$sessionId',
+      data: {
+        'companyId': companyId,
+        'guardId': guardId,
+        'action': action,
+        'counter': counter,
+        'notes': notes,
+      },
+    );
+    if (res.data is Map) return Map<String, dynamic>.from(res.data as Map);
+    throw Exception('Unexpected update patrol response: ${res.data}');
+  }
+}
+
+// Parking Manager (vehicle entry, exit and violations; no GPS)
+extension ParkingManagerApi on ApiClient {
+  Future<List<Map<String, dynamic>>> listParkingZones({required String companyId, String postSiteId = ''}) async {
+    final res = await _dio.get('/api/mobile/parking-manager', queryParameters: {'companyId': companyId, if (postSiteId.isNotEmpty) 'postSiteId': postSiteId});
+    final data = res.data;
+    if (data is Map && data['zones'] is List) return (data['zones'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    throw Exception('Unexpected parking manager response: $data');
+  }
+
+  Future<Map<String, dynamic>> checkInParkingVehicle({required String zoneId, required String companyId, required String guardId, required String guardName, required String plateNumber, String vehicleMake = '', String vehicleModel = '', String vehicleColor = '', String driverName = '', String driverPhone = '', String permitNumber = '', String parkingSpace = '', String purpose = '', String notes = ''}) async {
+    final res = await _dio.post('/api/mobile/parking-manager/$zoneId/check-in', data: {'companyId': companyId, 'guardId': guardId, 'guardName': guardName, 'plateNumber': plateNumber, 'vehicleMake': vehicleMake, 'vehicleModel': vehicleModel, 'vehicleColor': vehicleColor, 'driverName': driverName, 'driverPhone': driverPhone, 'permitNumber': permitNumber, 'parkingSpace': parkingSpace, 'purpose': purpose, 'notes': notes});
+    if (res.data is Map) return Map<String, dynamic>.from(res.data as Map);
+    throw Exception('Unexpected parking check-in response: ${res.data}');
+  }
+
+  Future<Map<String, dynamic>> checkOutParkingVehicle({required String zoneId, required String recordId, required String companyId, String notes = ''}) async {
+    final res = await _dio.patch('/api/mobile/parking-manager/$zoneId/record/$recordId/check-out', data: {'companyId': companyId, 'notes': notes});
+    if (res.data is Map) return Map<String, dynamic>.from(res.data as Map);
+    throw Exception('Unexpected parking check-out response: ${res.data}');
+  }
+
+  Future<Map<String, dynamic>> logParkingViolation({required String zoneId, required String companyId, required String guardId, required String guardName, required String plateNumber, required String violationType, required String notes, String vehicleMake = '', String vehicleModel = '', String vehicleColor = '', String parkingSpace = ''}) async {
+    final res = await _dio.post('/api/mobile/parking-manager/$zoneId/violation', data: {'companyId': companyId, 'guardId': guardId, 'guardName': guardName, 'plateNumber': plateNumber, 'violationType': violationType, 'notes': notes, 'vehicleMake': vehicleMake, 'vehicleModel': vehicleModel, 'vehicleColor': vehicleColor, 'parkingSpace': parkingSpace});
+    if (res.data is Map) return Map<String, dynamic>.from(res.data as Map);
+    throw Exception('Unexpected parking violation response: ${res.data}');
+  }
+}

@@ -243,22 +243,32 @@ class _OtpVerificationScreenState
             crossAxisAlignment:
                 CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: const Color(
-                    0xFF0F3DFF,
-                  ).withOpacity(0.14),
-                  borderRadius:
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(
+                        0xFF0F3DFF,
+                      ).withOpacity(0.14),
+                      borderRadius:
                       BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.mark_email_read_outlined,
-                  color: Color(0xFF6D8BFF),
-                  size: 30,
-                ),
+                    ),
+                    child: const Icon(
+                      Icons.mark_email_read_outlined,
+                      color: Color(0xFF6D8BFF),
+                      size: 30,
+                    ),
+                  ),
+                  Hero(
+                      tag: "navi-logo",
+                      child: Image.asset("images/logonew.png", width: 70, height: 70,)),
+                ],
               ),
+
               const SizedBox(height: 24),
               const Text(
                 'Verify your email',

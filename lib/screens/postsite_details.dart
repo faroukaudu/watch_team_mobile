@@ -20,6 +20,7 @@ import 'package:watch_team/screens/tasks/task_list_screen.dart';
 import 'package:watch_team/screens/post_site_security_team_screen.dart';
 import 'package:watch_team/screens/post_site_contact_screen.dart';
 import 'package:watch_team/screens/passdown_screen.dart';
+import 'package:watch_team/screens/parking_manager_screen.dart';
 
 // MAP SCREEN
 class PostsiteDetails extends StatefulWidget {
@@ -433,9 +434,37 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
                   children: [
                     TableRow(
                       children: [
-                        const IconsText(
+                        IconsText(
                           iconType: Icons.crisis_alert,
                           itemName: "Panic Mode",
+                          onTap: () {
+                            ScaffoldMessenger.of(context)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(
+                                const SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline_rounded,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Panic Mode is currently unavailable.',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: Duration(seconds: 3),
+                                  margin: EdgeInsets.all(16),
+                                ),
+                              );
+                          },
                         ),
                         IconsText(
                           iconType: Icons.person_pin_circle_outlined,
@@ -452,12 +481,27 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
                             );
                           },
                         ),
+                        // IconsText(
+                        //   iconType: Icons.qr_code_scanner,
+                        //   itemName: "Scan Tag",
+                        //   onTap: () {
+                        //     Navigator.of(context, rootNavigator: true)
+                        //         .pushNamed('/scantag_screen');
+                        //   },
+                        // ),
                         IconsText(
-                          iconType: Icons.qr_code_scanner,
-                          itemName: "Scan Tag",
+                          iconType: Icons.assignment,
+                          itemName: "DAR",
                           onTap: () {
-                            Navigator.of(context, rootNavigator: true)
-                                .pushNamed('/scantag_screen');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DARScreen(
+                                  postSiteId: postSitemap['_id'].toString(),
+                                  postSiteName: postSitemap['siteName'].toString(),
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ],
@@ -551,9 +595,16 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
 
                     TableRow(
                       children: [
-                        const IconsText(
-                          iconType: Icons.local_parking,
+                        IconsText(
+                          iconType: Icons.local_parking_rounded,
                           itemName: "Parking Manager",
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const ParkingManagerScreen(),
+                              ),
+                            );
+                          },
                         ),
                         IconsText(
                           iconType: Icons.supervisor_account,
@@ -588,27 +639,27 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
                       ],
                     ),
 
-                    TableRow(
-                      children: [
-                        IconsText(
-                          iconType: Icons.assignment,
-                          itemName: "DAR",
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => DARScreen(
-                                  postSiteId: postSitemap['_id'].toString(),
-                                  postSiteName: postSitemap['siteName'].toString(),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox.shrink(),
-                        const SizedBox.shrink(),
-                      ],
-                    ),
+                    // TableRow(
+                    //   children: [
+                    //     IconsText(
+                    //       iconType: Icons.assignment,
+                    //       itemName: "DAR",
+                    //       onTap: () {
+                    //         Navigator.push(
+                    //           context,
+                    //           MaterialPageRoute(
+                    //             builder: (_) => DARScreen(
+                    //               postSiteId: postSitemap['_id'].toString(),
+                    //               postSiteName: postSitemap['siteName'].toString(),
+                    //             ),
+                    //           ),
+                    //         );
+                    //       },
+                    //     ),
+                    //     const SizedBox.shrink(),
+                    //     const SizedBox.shrink(),
+                    //   ],
+                    // ),
                   ],
                 ),
               ),
