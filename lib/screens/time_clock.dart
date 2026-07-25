@@ -49,6 +49,18 @@ class _TimeClockState extends State<TimeClock> {
     return end.difference(start);
   }
 
+  double get _shiftProgress {
+    final totalSeconds = _shiftDuration().inSeconds;
+
+    if (totalSeconds <= 0) {
+      return 0.0;
+    }
+
+    final completedSeconds = totalSeconds - _remaining.inSeconds;
+
+    return (completedSeconds / totalSeconds).clamp(0.0, 1.0);
+  }
+
   void _refreshRemaining() {
     final duration = _shiftDuration();
     final left = duration - _elapsed;
@@ -166,7 +178,7 @@ class _TimeClockState extends State<TimeClock> {
     // Print to console
     debugPrint(msg);
     await _sendData(work.toString(),brk.toString(),total.toString(), startClockTime.toString(),
-    endClockTime.toString());
+        endClockTime.toString());
 
     // (Optional) show on screen too
     if (mounted) {
@@ -235,11 +247,11 @@ class _TimeClockState extends State<TimeClock> {
       //   value: 42,
       // );
       final response = await TimeClockPush.sendDataToServer(checkedId: SessionData.checkID!,
-          worktime: work, breaktime: brk,
-          userData: SessionData.userProfile,
-          companyData: SessionData.companyInfo,
-          startTimer: startT,
-          stopTimer: stopT,
+        worktime: work, breaktime: brk,
+        userData: SessionData.userProfile,
+        companyData: SessionData.companyInfo,
+        startTimer: startT,
+        stopTimer: stopT,
         docId: SessionData.checkID!,
 
 
@@ -381,13 +393,26 @@ class _TimeClockState extends State<TimeClock> {
                     ],
                   ),
                   const SizedBox(height: 30),
-                  Container(
-                    height: 10,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white38,
-                      borderRadius: BorderRadius.circular(15),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(
+                      begin: 0.0,
+                      end: _shiftProgress,
                     ),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOut,
+                    builder: (context, progress, child) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 10,
+                          backgroundColor: Colors.white38,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      );
+                    },
                   )
                 ],
               ),
@@ -485,9 +510,38 @@ class _TimeClockState extends State<TimeClock> {
             ),
           ),
 
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              const Expanded(
+                child: Divider(
+                  color: Colors.green,
+                  thickness: 1,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  "Long Press for 3 Sec to Clock In",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white60,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+              const Expanded(
+                child: Divider(
+                  color: Colors.green,
+                  thickness: 1,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           Align(
-            alignment: Alignment.centerLeft,
+              alignment: Alignment.centerLeft,
               child: Text("Time Log Entries", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, ),  )),
           const SizedBox(height: 5),
 
@@ -555,10 +609,10 @@ class _TimeClockState extends State<TimeClock> {
 
   Divider divide() {
     return Divider(
-                        thickness: 1,          // line thickness
-                        color: Colors.white24,    // line color
-                        height: 20,        // right spacing
-                      );
+      thickness: 1,          // line thickness
+      color: Colors.white24,    // line color
+      height: 20,        // right spacing
+    );
   }
 
   Widget _buildTimeLogCard(Map<String, dynamic> report) {
@@ -586,142 +640,142 @@ class _TimeClockState extends State<TimeClock> {
     final String brk  = _cleanDuration(breakTime);
 
     return TweenAnimationBuilder<double>(
-        tween: Tween(begin: 80, end: 0),         // 30px below → 0 (original position)
-        duration: const Duration(milliseconds: 600),
+      tween: Tween(begin: 80, end: 0),         // 30px below → 0 (original position)
+      duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutCubic,
-        builder: (context, value, child) {
-          return Transform.translate(
-            offset: Offset(0, value),            // move up from 30 to 0
-            child: Opacity(
-              opacity: 1 - (value / 80),         // fade in while moving
-              child: child,
-            ),
-          );
-        },
-        child: Container(
-      margin: const EdgeInsets.symmetric(vertical: 20.0),
-      decoration: BoxDecoration(
-        color: Colors.white12,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // Date row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Date",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  dateOnly, // or format this string into a nicer date
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            divide(),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, value),            // move up from 30 to 0
+          child: Opacity(
+            opacity: 1 - (value / 80),         // fade in while moving
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 20.0),
+        decoration: BoxDecoration(
+          color: Colors.white12,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              // Date row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Date",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    dateOnly, // or format this string into a nicer date
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              divide(),
 
-            // Post Site row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Post Site",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  postSiteName,
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
-            ),
-            divide(),
+              // Post Site row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Post Site",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    postSiteName,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ],
+              ),
+              divide(),
 
-            // Guard row (optional)
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //   children: [
-            //     const Text(
-            //       "Guard",
-            //       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            //     ),
-            //     Text(
-            //       guardName,
-            //       style: const TextStyle(fontSize: 15),
-            //     ),
-            //   ],
-            // ),
-            // divide(),
+              // Guard row (optional)
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //   children: [
+              //     const Text(
+              //       "Guard",
+              //       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              //     ),
+              //     Text(
+              //       guardName,
+              //       style: const TextStyle(fontSize: 15),
+              //     ),
+              //   ],
+              // ),
+              // divide(),
 
-            // Start Time row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Start Time",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  clockInTime,
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
-            ),
-            divide(),
+              // Start Time row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Start Time",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    clockInTime,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ],
+              ),
+              divide(),
 
-            // End Time row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "End Time",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  clockOutTime,
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
-            ),
-            divide(),
+              // End Time row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "End Time",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    clockOutTime,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ],
+              ),
+              divide(),
 
-            // Work Time row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Work Time",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  work,
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
-            ),
-            divide(),
+              // Work Time row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Work Time",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    work,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ],
+              ),
+              divide(),
 
-            // Break Time row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Break Time",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  brk,
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
-            ),
-          ],
+              // Break Time row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Break Time",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    brk,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
   Widget _buildClockCard(

@@ -125,120 +125,122 @@ class _AllReportsState extends State<AllReports> {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0B0B0B),
-        appBar: AppBar(
+      child: SafeArea(
+        child: Scaffold(
           backgroundColor: const Color(0xFF0B0B0B),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              } else {
-                Navigator.pushReplacementNamed(context, '/dashboard');
-              }
-            },
-          ),
-          centerTitle: true,
-          title: const Text(
-            'Reports',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 18,
-            ),
-          ),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(64),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: _TabsPill(
-                onTabChanged: (idx) => setState(() => tabIndex = idx),
-              ),
-            ),
-          ),
-        ),
-        body: RefreshIndicator(
-          color: const Color(0xFFFF4D4D),
-          backgroundColor: const Color(0xFF171717),
-          onRefresh: _onRefresh,
-          child: loading
-              ? ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: const [
-              SizedBox(height: 280),
-              Center(child: CircularProgressIndicator()),
-            ],
-          )
-              : data.isEmpty
-              ? ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: const [
-              SizedBox(height: 240),
-              _EmptyReportsState(),
-            ],
-          )
-              : ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
-            itemCount: data.length,
-            itemBuilder: (context, i) {
-              final r = data[i];
-              final id = (r['_id'] ?? '').toString();
-              final title = (r['title'] ?? 'Report').toString();
-              final createdAt = (r['createdAt'] ?? '').toString();
-              final category =
-              (r['category'] ?? 'general').toString();
-
-              final badge = _badgeForCategory(category);
-              final reportType = _displayTypeFromCategory(category);
-
-              return _ReportCard(
-                title: title,
-                createdAtIso: createdAt,
-                badge: badge,
-                reportType: reportType,
-                onTap: () async {
-                  if (id.isEmpty) return;
-
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ReportDetailScreen(
-                        reportId: id,
-                        title: title,
-                        api: api,
-                      ),
-                    ),
-                  );
-
-                  loadReports();
-                },
-              );
-            },
-          ),
-        ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          child: SizedBox(
-            height: 52,
-            child: ElevatedButton(
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF0B0B0B),
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () {
-                Navigator.of(context, rootNavigator: true)
-                    .pushNamed('/select_report');
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  Navigator.pushReplacementNamed(context, '/dashboard');
+                }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F3DFF),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
+            ),
+            centerTitle: true,
+            title: const Text(
+              'Reports',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
               ),
-              child: const Text(
-                'Add Report',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(64),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: _TabsPill(
+                  onTabChanged: (idx) => setState(() => tabIndex = idx),
+                ),
+              ),
+            ),
+          ),
+          body: RefreshIndicator(
+            color: const Color(0xFFFF4D4D),
+            backgroundColor: const Color(0xFF171717),
+            onRefresh: _onRefresh,
+            child: loading
+                ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 280),
+                Center(child: CircularProgressIndicator()),
+              ],
+            )
+                : data.isEmpty
+                ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 240),
+                _EmptyReportsState(),
+              ],
+            )
+                : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+              itemCount: data.length,
+              itemBuilder: (context, i) {
+                final r = data[i];
+                final id = (r['_id'] ?? '').toString();
+                final title = (r['title'] ?? 'Report').toString();
+                final createdAt = (r['createdAt'] ?? '').toString();
+                final category =
+                (r['category'] ?? 'general').toString();
+        
+                final badge = _badgeForCategory(category);
+                final reportType = _displayTypeFromCategory(category);
+        
+                return _ReportCard(
+                  title: title,
+                  createdAtIso: createdAt,
+                  badge: badge,
+                  reportType: reportType,
+                  onTap: () async {
+                    if (id.isEmpty) return;
+        
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ReportDetailScreen(
+                          reportId: id,
+                          title: title,
+                          api: api,
+                        ),
+                      ),
+                    );
+        
+                    loadReports();
+                  },
+                );
+              },
+            ),
+          ),
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            child: SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true)
+                      .pushNamed('/select_report');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F3DFF),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Add Report',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ),

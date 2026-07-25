@@ -220,11 +220,13 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
               Colors.grey;
 
           if (guards.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                "No other guard found on this post site.",
-                style: TextStyle(color: muted, fontWeight: FontWeight.w700),
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  "No other guard found on this post site.",
+                  style: TextStyle(color: muted, fontWeight: FontWeight.w700),
+                ),
               ),
             );
           }
@@ -389,317 +391,319 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
         ? (widget.shift['breaks'] as List).join(", ")
         : "None";
 
-    return Scaffold(
-      backgroundColor: bg,
-      appBar: AppBar(
+    return SafeArea(
+      child: Scaffold(
         backgroundColor: bg,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: text),
-        title: Text(
-          "Shift Details",
-          style: TextStyle(color: text, fontWeight: FontWeight.w800),
+        appBar: AppBar(
+          backgroundColor: bg,
+          elevation: 0,
+          centerTitle: true,
+          iconTheme: IconThemeData(color: text),
+          title: Text(
+            "Shift Details",
+            style: TextStyle(color: text, fontWeight: FontWeight.w800),
+          ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
-        decoration: BoxDecoration(
-          color: card,
-          border: Border(top: BorderSide(color: text.withOpacity(.08))),
-        ),
-        child: SafeArea(
-          child: SizedBox(
-            height: 54,
-            child: Row(
-              children: [
-                if (selected) ...[
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: loadingExchange ? null : openExchangeGuardModal,
-                      icon: loadingExchange
-                          ? const SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                          : const Icon(Icons.swap_horiz),
-                      label: const Text("Exchange Shift"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orangeAccent,
-                        side: const BorderSide(color: Colors.orangeAccent),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-
-                if (canAcceptExchange) ...[
-                  Expanded(
-                    child: SizedBox(
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: acceptExchange,
-                        icon: const Icon(Icons.check_circle, size: 20),
-                        label: const Text(
-                          "Accept Exchange",
-                          textAlign: TextAlign.center,
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          alignment: Alignment.center,
-                          textStyle: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            height: 1.1,
-                          ),
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+          decoration: BoxDecoration(
+            color: card,
+            border: Border(top: BorderSide(color: text.withOpacity(.08))),
+          ),
+          child: SafeArea(
+            child: SizedBox(
+              height: 54,
+              child: Row(
+                children: [
+                  if (selected) ...[
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: loadingExchange ? null : openExchangeGuardModal,
+                        icon: loadingExchange
+                            ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                            : const Icon(Icons.swap_horiz),
+                        label: const Text("Exchange Shift"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orangeAccent,
+                          side: const BorderSide(color: Colors.orangeAccent),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ] else if (exchangeAlreadyAccepted) ...[
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: null,
-                      icon: const Icon(Icons.lock),
-                      label: const Text("Already Assigned"),
-                      style: ElevatedButton.styleFrom(
-                        disabledBackgroundColor: Colors.grey.shade700,
-                        disabledForegroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(width: 10),
+                  ],
+      
+                  if (canAcceptExchange) ...[
+                    Expanded(
+                      child: SizedBox(
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: acceptExchange,
+                          icon: const Icon(Icons.check_circle, size: 20),
+                          label: const Text(
+                            "Accept Exchange",
+                            textAlign: TextAlign.center,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            alignment: Alignment.center,
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              height: 1.1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ] else ...[
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed:
-                      selected || selectedByOther || selecting ? null : selectShift,
-                      icon: selecting
-                          ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                          : Icon(
-                        selectedByOther
-                            ? Icons.lock
-                            : selected
-                            ? Icons.check_circle
-                            : Icons.login,
-                      ),
-                      label: Text(
-                        selectedByOther
-                            ? "Already Assigned"
-                            : selected
-                            ? "Shift Selected"
-                            : selecting
-                            ? "Selecting..."
-                            : "Select Shift",
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: selected ? Colors.green : primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                        selectedByOther ? Colors.grey.shade700 : Colors.green,
-                        disabledForegroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                  ] else if (exchangeAlreadyAccepted) ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: null,
+                        icon: const Icon(Icons.lock),
+                        label: const Text("Already Assigned"),
+                        style: ElevatedButton.styleFrom(
+                          disabledBackgroundColor: Colors.grey.shade700,
+                          disabledForegroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ] else ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed:
+                        selected || selectedByOther || selecting ? null : selectShift,
+                        icon: selecting
+                            ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                            : Icon(
+                          selectedByOther
+                              ? Icons.lock
+                              : selected
+                              ? Icons.check_circle
+                              : Icons.login,
+                        ),
+                        label: Text(
+                          selectedByOther
+                              ? "Already Assigned"
+                              : selected
+                              ? "Shift Selected"
+                              : selecting
+                              ? "Selecting..."
+                              : "Select Shift",
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selected ? Colors.green : primary,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor:
+                          selectedByOther ? Colors.grey.shade700 : Colors.green,
+                          disabledForegroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  primary,
-                  primary.withOpacity(.75),
-                  Colors.deepOrange.withOpacity(.85),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: primary.withOpacity(.35),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    primary,
+                    primary.withOpacity(.75),
+                    Colors.deepOrange.withOpacity(.85),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -8,
-                  bottom: -12,
-                  child: Icon(
-                    Icons.work_history_rounded,
-                    size: 110,
-                    color: Colors.white.withOpacity(.12),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: primary.withOpacity(.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: 48,
-                      width: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(.18),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.schedule_rounded,
-                        color: Colors.white,
-                        size: 26,
-                      ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    right: -8,
+                    bottom: -12,
+                    child: Icon(
+                      Icons.work_history_rounded,
+                      size: 110,
+                      color: Colors.white.withOpacity(.12),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      value("shiftTitle"),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 25,
-                        fontWeight: FontWeight.w900,
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.18),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.schedule_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      value("postSiteName"),
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(.82),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                      const SizedBox(height: 16),
+                      Text(
+                        value("shiftTitle"),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(.18),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(.25),
+                      const SizedBox(height: 8),
+                      Text(
+                        value("postSiteName"),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(.82),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(.18),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(.25),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  selected
+                                      ? Icons.check_circle
+                                      : Icons.radio_button_unchecked,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  selected ? "Selected" : "Available",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                selected
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                selected ? "Selected" : "Available",
-                                style: const TextStyle(
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(.16),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.access_time,
+                                  size: 16,
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w900,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(.16),
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.access_time,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                "${value("startTime")} - ${value("endTime")}",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
+                                const SizedBox(width: 6),
+                                Text(
+                                  "${value("startTime")} - ${value("endTime")}",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
-          infoTile(
-            context,
-            icon: Icons.schedule,
-            title: "Shift Time",
-            textValue: "${value("startTime")} - ${value("endTime")}",
-          ),
-          infoTile(
-            context,
-            icon: Icons.calendar_month,
-            title: "Repeat Days",
-            textValue: repeatDays,
-          ),
-          infoTile(
-            context,
-            icon: Icons.timelapse,
-            title: "Repeat For",
-            textValue: value("repeatFor"),
-          ),
-          infoTile(
-            context,
-            icon: Icons.coffee,
-            title: "Breaks",
-            textValue: breaks,
-          ),
-          infoTile(
-            context,
-            icon: Icons.notes,
-            title: "Note",
-            textValue: value("note"),
-          ),
-        ],
+            const SizedBox(height: 18),
+            infoTile(
+              context,
+              icon: Icons.schedule,
+              title: "Shift Time",
+              textValue: "${value("startTime")} - ${value("endTime")}",
+            ),
+            infoTile(
+              context,
+              icon: Icons.calendar_month,
+              title: "Repeat Days",
+              textValue: repeatDays,
+            ),
+            infoTile(
+              context,
+              icon: Icons.timelapse,
+              title: "Repeat For",
+              textValue: value("repeatFor"),
+            ),
+            infoTile(
+              context,
+              icon: Icons.coffee,
+              title: "Breaks",
+              textValue: breaks,
+            ),
+            infoTile(
+              context,
+              icon: Icons.notes,
+              title: "Note",
+              textValue: value("note"),
+            ),
+          ],
+        ),
       ),
     );
   }

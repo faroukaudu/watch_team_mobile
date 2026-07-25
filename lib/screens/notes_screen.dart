@@ -185,149 +185,151 @@ class _NotesScreenState extends State<NotesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0B),
-      appBar: AppBar(
+    return SafeArea(
+      child: Scaffold(
         backgroundColor: const Color(0xFF0B0B0B),
-        elevation: 0,
-        title: const Text(
-          "Notes",
-          style: TextStyle(color: Colors.white),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pushReplacementNamed(context, '/dashboard');
-            }
-          },
-        ),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: pickStartDate,
-                        icon: const Icon(Icons.date_range),
-                        label: Text("From: ${shortDate(startDate)}"),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: pickEndDate,
-                        icon: const Icon(Icons.date_range),
-                        label: Text("To: ${shortDate(endDate)}"),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: clearFilter,
-                    child: const Text("Clear Date Filter"),
-                  ),
-                ),
-              ],
-            ),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0B0B0B),
+          elevation: 0,
+          title: const Text(
+            "Notes",
+            style: TextStyle(color: Colors.white),
           ),
-
-          Expanded(
-            child: loading
-                ? const Center(child: CircularProgressIndicator())
-                : notes.isEmpty
-                ? const Center(
-              child: Text(
-                "No notes found.",
-                style: TextStyle(color: Colors.white70),
-              ),
-            )
-                : RefreshIndicator(
-              onRefresh: loadNotes,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-                itemCount: notes.length,
-                itemBuilder: (context, index) {
-                  final note = notes[index];
-
-                  return Card(
-                    color: const Color(0xFF171717),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      title: Text(
-                        (note['title'] ?? 'Untitled Note').toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushReplacementNamed(context, '/dashboard');
+              }
+            },
+          ),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: pickStartDate,
+                          icon: const Icon(Icons.date_range),
+                          label: Text("From: ${shortDate(startDate)}"),
                         ),
                       ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 4),
-                          Text(
-                            (note['postSiteName'] ?? 'Post Site').toString(),
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            formatDate(note['createdAt']),
-                            style: const TextStyle(color: Colors.white38),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: pickEndDate,
+                          icon: const Icon(Icons.date_range),
+                          label: Text("To: ${shortDate(endDate)}"),
+                        ),
                       ),
-                      trailing: PopupMenuButton<String>(
-                        color: const Color(0xFF222222),
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
-                        onSelected: (value) {
-                          if (value == 'view') {
-                            viewNote(note);
-                          }
-
-                          if (value == 'edit') {
-                            editNote(note);
-                          }
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(
-                            value: 'view',
-                            child: Text("View"),
-                          ),
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Text("Edit"),
-                          ),
-                        ],
-                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: clearFilter,
+                      child: const Text("Clear Date Filter"),
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-        child: SizedBox(
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: addNewNote,
-            icon: const Icon(Icons.add),
-            label: const Text("Add New Note"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0F3DFF),
-              foregroundColor: Colors.white,
+      
+            Expanded(
+              child: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : notes.isEmpty
+                  ? const Center(
+                child: Text(
+                  "No notes found.",
+                  style: TextStyle(color: Colors.white70),
+                ),
+              )
+                  : RefreshIndicator(
+                onRefresh: loadNotes,
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                  itemCount: notes.length,
+                  itemBuilder: (context, index) {
+                    final note = notes[index];
+      
+                    return Card(
+                      color: const Color(0xFF171717),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        title: Text(
+                          (note['title'] ?? 'Untitled Note').toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              (note['postSiteName'] ?? 'Post Site').toString(),
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              formatDate(note['createdAt']),
+                              style: const TextStyle(color: Colors.white38),
+                            ),
+                          ],
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          color: const Color(0xFF222222),
+                          icon: const Icon(Icons.more_vert, color: Colors.white),
+                          onSelected: (value) {
+                            if (value == 'view') {
+                              viewNote(note);
+                            }
+      
+                            if (value == 'edit') {
+                              editNote(note);
+                            }
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 'view',
+                              child: Text("View"),
+                            ),
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Text("Edit"),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: addNewNote,
+              icon: const Icon(Icons.add),
+              label: const Text("Add New Note"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F3DFF),
+                foregroundColor: Colors.white,
+              ),
             ),
           ),
         ),
