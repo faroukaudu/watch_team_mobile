@@ -51,114 +51,89 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
   // String post
    // bool check;
 
-  Future<void> _simulateTask({String? notify_text,String? load_text} ) async {
-    // 1️⃣ Show the dialog and store its context
-    BuildContext? dialogContext;
+  Future<void> _simulateTask({String? notify_text, String? load_text}) async {
+    if (SessionData.isActiveAtAnotherPost(_currentPostSiteId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Already checked in at another post site.')),
+      );
+      return;
+    }
 
-    // 1️⃣ Show the loading popup
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        dialogContext = context; // capture the dialog's context
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children:  [
-                CircularProgressIndicator(),
-                SizedBox(width: 24),
-                Text(load_text ?? "Please Wait..."),
-              ],
-            ),
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 24),
+              Text(load_text ?? 'Please Wait...'),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
 
-
-
-
-
- void checkingIn () async{
-   DateTime now = DateTime.now();
-   final serverResponse = await CheckInOut.checkIntoServer(checkInTime: now.toString(),
-
-       userData: SessionData.userProfile,
-       // userData: postSitemap['clientName'],
-       companyData: SessionData.companyInfo);
-   // ✅ start live tracking now
-   await LiveLocationManager.startLive();
-   // 2️⃣ Simulate your long-running task (e.g., network call)
-   await Future.delayed(const Duration(seconds: 3));
-   // print("This is the Response Below");
-
-   final data =(serverResponse);
-   print(data["reportId"]);
-   SessionData.checkID = data['reportId'];
-   print(serverResponse.toString());
-
-
-   // 3️⃣ Close only the dialog, not the page
-   if (dialogContext != null && mounted) {
-     Navigator.of(dialogContext!).pop(); // safe to pop the dialog
-   }
-
-   // 4️⃣ Show result (optional)
-   ScaffoldMessenger.of(context).showSnackBar(
-     SnackBar(content: Text(notify_text ?? "Successful")),
-   );
- }
-    void checkingout () async{
-      DateTime now = DateTime.now();
-      final serverResponse = await CheckOut.checkIntoServer(checkId: SessionData.checkID!,
+    try {
+      if (!checkedIn) {
+        if (!_canStartSelectedShift()) return;
+        final response = await CheckInOut.checkIntoServer(
+          checkInTime: DateTime.now().toUtc().toIso8601String(),
+          postSiteId: _currentPostSiteId,
+          clientId: postSitemap['clientID']?.toString() ?? '',
           userData: SessionData.userProfile,
-          // userData: postSitemap['clientName'],
-          checkoutTime: now.toString());
-      // ✅ stop live tracking now
-      await LiveLocationManager.stopLive();
-      // 2️⃣ Simulate your long-running task (e.g., network call)
-      await Future.delayed(const Duration(seconds: 2));
-      // print("This is the Response Below");
-
-      final data =(serverResponse);
-      // print(data["reportId"]);
-      SessionData.checkID = data['reportId'];
-      print(serverResponse.toString());
-      SessionData.checkID = null;
-
-
-      // 3️⃣ Close only the dialog, not the page
-      if (dialogContext != null && mounted) {
-        Navigator.of(dialogContext!).pop(); // safe to pop the dialog
+          companyData: SessionData.companyInfo,
+        );
+        if (response['success'] != true) {
+          throw Exception(response['message'] ?? 'Unable to check in.');
+        }
+        SessionData.applyActiveSession(response['activeSession']);
+        await LiveLocationManager.startLive();
+        if (mounted) setState(() => checkedIn = true);
+      } else {
+        if (SessionData.isActivelyClockedIn) {
+          throw Exception('Clock out before checking out from this post site.');
+        }
+        final response = await CheckOut.checkIntoServer(
+          checkId: SessionData.checkID!,
+          userData: SessionData.userProfile,
+          checkoutTime: DateTime.now().toUtc().toIso8601String(),
+        );
+        if (response['success'] != true) {
+          throw Exception(response['message'] ?? 'Unable to check out.');
+        }
+        SessionData.applyActiveSession(response['activeSession']);
+        await LiveLocationManager.stopLive();
+        if (mounted) setState(() => checkedIn = false);
       }
 
-      // 4️⃣ Show result (optional)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(notify_text ?? "Successful")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(notify_text ?? 'Successful')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
     }
+  }
 
-    if(checkedIn == false){
-      if (!_canStartSelectedShift()) return;
-      setState(() {
-        checkedIn = true;
-        SessionData.clockedIn = true;
-      });
-      checkingIn();
+  String get _currentPostSiteId =>
+      postSitemap['_id']?.toString() ?? SessionData.postSiteID?.toString() ?? '';
 
-    }else{
-      setState(() {
-        checkedIn = false;
-        SessionData.clockedIn = false;
-      });
-      checkingout();
-
-    }
-
-    }
+  bool get _activeAtAnotherPost =>
+      SessionData.isActiveAtAnotherPost(_currentPostSiteId);
 
 
 
@@ -193,6 +168,8 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
     targetLocation = LatLng(lat, long); // now assigned
     title = postSitemap['clientName'];
     snip = postSitemap['siteName'];
+    SessionData.postSiteID = _currentPostSiteId;
+    checkedIn = SessionData.isActiveAtPost(_currentPostSiteId) && SessionData.isCheckedIn;
 
     _initialized = true;
   }
@@ -315,14 +292,16 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
               margin: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
 
               decoration: BoxDecoration(
-                color: checkedIn ? Colors.red[600] : Colors.green[600],
+                color: _activeAtAnotherPost
+                    ? Colors.grey[700]
+                    : checkedIn ? Colors.red[600] : Colors.green[600],
                 border: Border.all(color: Colors.white24, width: 3,),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: GestureDetector(
 
                 behavior: HitTestBehavior.opaque, // makes the whole area tappable
-                onTap: () async  {
+                onTap: _activeAtAnotherPost ? null : () async  {
                   showDialog(
                     context: context,
                     barrierDismissible: false,
@@ -379,9 +358,19 @@ class _PostsiteDetailsState extends State<PostsiteDetails> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    checkedIn ? Icon(Icons.logout) : Icon(Icons.login),
+                    Icon(_activeAtAnotherPost
+                        ? Icons.block
+                        : checkedIn ? Icons.logout : Icons.login),
                     SizedBox(width: 10,),
-                    Text(checkedIn ? "Check Out": "Check In" , style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                    Flexible(
+                      child: Text(
+                        _activeAtAnotherPost
+                            ? "Already Checked In at Another Post"
+                            : checkedIn ? "Check Out" : "Check In",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                     // Text("${args}")
                   ],
 

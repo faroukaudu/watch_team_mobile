@@ -205,6 +205,12 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
             setState(() {
               _selectedindex = 1;
             });
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              postSiteNavigatorKey.currentState?.popUntil(
+                    (route) => route.isFirst,
+              );
+            });
           },
 
           onLogout: () async {

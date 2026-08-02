@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:torch_light/torch_light.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:watch_team/session_data.dart';
 import 'package:watch_team/screens/settings/settings_screen.dart';
@@ -9,6 +10,9 @@ import 'package:watch_team/screens/support/chat_support_screen.dart';
 import 'package:watch_team/screens/support/email_support_screen.dart';
 import 'package:watch_team/screens/support/support_center_screen.dart';
 import 'package:watch_team/widgets/security_ui.dart';
+import 'package:watch_team/screens/home-dash.dart';
+
+import '../routes.dart';
 
 class SecurityDrawer extends StatefulWidget {
   final VoidCallback onHome;
@@ -94,6 +98,145 @@ class _SecurityDrawerState extends State<SecurityDrawer>
     await Share.share(
       'Protect, report and coordinate with Watch Team.\n$url',
       subject: 'Watch Team Security App',
+    );
+  }
+
+  Future<bool?> showLogoutDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.65),
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A3558),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      height: 64,
+                      width: 64,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white70,
+                        size: 30,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 6,
+                      right: 6,
+                      child: Container(
+                        height: 26,
+                        width: 26,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE53935),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "!",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  "Confirm!",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "Do you want to logout?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE7EDF6),
+                            foregroundColor: const Color(0xFF1B1F2A),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text(
+                            "No",
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE53935),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text(
+                            "Yes, Logout",
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -308,6 +451,7 @@ By using Watch Team, each user contributes to a shared security record. The valu
       _DrawerEntry(Icons.system_update_alt_rounded, 'App Version', showVersion),
     ];
 
+
     return Drawer(
       width: MediaQuery.of(context).size.width * .88,
       backgroundColor: SecurityColors.background,
@@ -474,7 +618,21 @@ By using Watch Team, each user contributes to a shared security record. The valu
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton.icon(
-                        onPressed: logout,
+                        onPressed: ()async{
+                          final ok = await showLogoutDialog(context);
+                          if (ok == true) {
+                            SessionData.userProfile = null;
+                            try {
+                              await TorchLight.disableTorch();
+                            } catch (_) {}
+
+                            if (!context.mounted) return;
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              AppRoutes.login,
+                                  (route) => false,
+                            );
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: SecurityColors.red,
                           foregroundColor: Colors.white,

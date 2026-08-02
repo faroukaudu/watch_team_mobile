@@ -1,11 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../global.dart' as g;
 import '../session_data.dart';
-import 'site_tour_qr_scan_screen.dart';
 import 'site_tour_nfc_scan_screen.dart';
+import 'site_tour_qr_scan_screen.dart';
 
 class SiteTourDetailScreen extends StatefulWidget {
   final Map<String, dynamic> tour;
@@ -35,25 +36,20 @@ class _SiteTourDetailScreenState extends State<SiteTourDetailScreen> {
 
   Future<void> refreshTour() async {
     try {
-      setState(() {
-        isRefreshing = true;
-      });
+      setState(() => isRefreshing = true);
 
       final companyId =
           SessionData.userProfile?['assignedCompanyID']?.toString() ?? '';
-
       final tourId = tour['_id']?.toString() ?? '';
 
       if (companyId.isEmpty || tourId.isEmpty) {
-        setState(() {
-          isRefreshing = false;
-        });
+        if (mounted) setState(() => isRefreshing = false);
         return;
       }
 
       final url = Uri.parse(
         '${g.baseUrl}/api/site-tours/detail'
-            '?companyId=$companyId&postSiteId=${widget.postSiteId}&tourId=$tourId',
+        '?companyId=$companyId&postSiteId=${widget.postSiteId}&tourId=$tourId',
       );
 
       final response = await http.get(url);
@@ -67,68 +63,60 @@ class _SiteTourDetailScreenState extends State<SiteTourDetailScreen> {
           isRefreshing = false;
         });
       } else {
-        setState(() {
-          isRefreshing = false;
-        });
+        setState(() => isRefreshing = false);
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-
-      setState(() {
-        isRefreshing = false;
-      });
+      setState(() => isRefreshing = false);
     }
-  }
-
-  Map<String, dynamic>? getCurrentGuardProgress() {
-    final progress = (tour['progress'] as List?) ?? [];
-    final guardId = SessionData.userProfile?['_id']?.toString() ?? '';
-
-    if (guardId.isEmpty || progress.isEmpty) return null;
-
-    final matches = progress.where(
-          (item) => item['guardId']?.toString() == guardId,
-    );
-
-    if (matches.isEmpty) return null;
-
-    return Map<String, dynamic>.from(matches.last);
   }
 
   @override
   Widget build(BuildContext context) {
     final tourName = tour['tourName']?.toString() ?? 'Site Tour';
     final description = tour['description']?.toString() ?? '';
-    final checkpoints = (tour['checkpoints'] as List?) ?? [];
-    final bool isNfcTour = checkpoints.any((cp) {
+    final checkpoints = (tour['checkpoints'] as List?) ?? const [];
+    final isNfcTour = checkpoints.any((cp) {
       final tag = cp['nfcTagValue']?.toString() ?? '';
-      return tag.isNotEmpty && tag != 'PENDING';
+      return tag.isNotEmpty;
     });
 
-    final scanButtonText = isNfcTour
-        ? 'Approach NFC Checkpoint'
-        : 'Scan QR Code Checkpoint';
-
-    final scanDescription = isNfcTour
-        ? 'Approach the NFC tag with your phone to complete each checkpoint.'
-        : 'Scan the QR code posted at each checkpoint to complete the tour.';
-
-    final scanIcon = isNfcTour ? Icons.nfc_rounded : Icons.qr_code_scanner;
-
-    final currentProgress = getCurrentGuardProgress();
+    final todayProgress = tour['todayProgress'] is Map
+        ? Map<String, dynamic>.from(tour['todayProgress'] as Map)
+        : null;
     final scannedCheckpoints =
-        (currentProgress?['scannedCheckpoints'] as List?) ?? [];
-
+        (todayProgress?['scannedCheckpoints'] as List?) ?? const [];
     final scannedIds = scannedCheckpoints
         .map((item) => item['checkpointId']?.toString())
-        .where((id) => id != null && id.isNotEmpty)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
         .toSet();
 
     final completedCount = scannedIds.length;
     final totalCount = checkpoints.length;
-    final progressText = '$completedCount / $totalCount completed';
-    final isCompleted =
-        totalCount > 0 && completedCount >= totalCount;
+    final completedToday = tour['completedToday'] == true;
+    final isScheduledToday = tour['isScheduledToday'] == true;
+    final canScan = isScheduledToday && !completedToday;
+    final scanButtonText = isNfcTour
+        ? 'Approach NFC Checkpoint'
+        : 'Scan QR Code Checkpoint';
+    final scanDescription = isNfcTour
+        ? 'Approach the NFC tag with your phone to complete each checkpoint.'
+        : 'Scan the QR code posted at each checkpoint to complete the tour.';
+    final scanIcon = isNfcTour ? Icons.nfc_rounded : Icons.qr_code_scanner;
+
+    String statusText;
+    Color statusColor;
+    if (!isScheduledToday) {
+      statusText = 'No site tours scheduled.';
+      statusColor = Colors.white70;
+    } else if (completedToday) {
+      statusText = 'Completed for today — come back tomorrow';
+      statusColor = Colors.greenAccent;
+    } else {
+      statusText = '$completedCount / $totalCount completed today';
+      statusColor = Colors.orangeAccent;
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -140,10 +128,10 @@ class _SiteTourDetailScreenState extends State<SiteTourDetailScreen> {
             onPressed: isRefreshing ? null : refreshTour,
             icon: isRefreshing
                 ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.refresh),
           ),
         ],
@@ -182,24 +170,23 @@ class _SiteTourDetailScreenState extends State<SiteTourDetailScreen> {
                       ],
                       const SizedBox(height: 12),
                       Text(
-                        isCompleted ? 'Tour Completed' : progressText,
+                        statusText,
                         style: TextStyle(
-                          color: isCompleted
-                              ? Colors.greenAccent
-                              : Colors.orangeAccent,
+                          color: statusColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 10),
                       LinearProgressIndicator(
-                        value:
-                        totalCount == 0 ? 0 : completedCount / totalCount,
+                        value: totalCount == 0 ? 0 : completedCount / totalCount,
                         minHeight: 7,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        scanDescription,
+                        completedToday
+                            ? 'Another daily tour will become available tomorrow.'
+                            : scanDescription,
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 13,
@@ -222,69 +209,72 @@ class _SiteTourDetailScreenState extends State<SiteTourDetailScreen> {
               Expanded(
                 child: checkpoints.isEmpty
                     ? const Center(
-                  child: Text(
-                    'No checkpoints available.',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                )
+                        child: Text(
+                          'No checkpoints available.',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      )
                     : ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: checkpoints.length,
-                  itemBuilder: (context, index) {
-                    final checkpoint = checkpoints[index];
-                    final checkpointId =
-                        checkpoint['_id']?.toString() ?? '';
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: checkpoints.length,
+                        itemBuilder: (context, index) {
+                          final checkpoint = checkpoints[index];
+                          final checkpointId =
+                              checkpoint['_id']?.toString() ?? '';
+                          final name =
+                              checkpoint['name']?.toString() ?? 'Checkpoint';
+                          final order = checkpoint['order']?.toString() ??
+                              (index + 1).toString();
+                          final isCheckpointCompleted =
+                              scannedIds.contains(checkpointId);
+                          final requiresNfcWrite = isNfcTour &&
+                              checkpoint['nfcWritten'] != true;
 
-                    final name =
-                        checkpoint['name']?.toString() ?? 'Checkpoint';
-
-                    final order = checkpoint['order']?.toString() ??
-                        (index + 1).toString();
-
-                    final isCheckpointCompleted =
-                    scannedIds.contains(checkpointId);
-
-                    return Card(
-                      color: const Color(0xFF1E1F21),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        dense: true,
-                        leading: CircleAvatar(
-                          radius: 17,
-                          backgroundColor: isCheckpointCompleted
-                              ? Colors.green
-                              : Colors.grey.shade700,
-                          child: isCheckpointCompleted
-                              ? const Icon(
-                            Icons.check,
-                            size: 18,
-                            color: Colors.white,
-                          )
-                              : Text(
-                            order,
-                            style: const TextStyle(
-                              color: Colors.white,
+                          return Card(
+                            color: const Color(0xFF1E1F21),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              dense: true,
+                              leading: CircleAvatar(
+                                radius: 17,
+                                backgroundColor: isCheckpointCompleted
+                                    ? Colors.green
+                                    : Colors.grey.shade700,
+                                child: isCheckpointCompleted
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 18,
+                                        color: Colors.white,
+                                      )
+                                    : Text(
+                                        order,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                              ),
+                              title: Text(
+                                name,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              subtitle: Text(
+                                requiresNfcWrite
+                                    ? 'NFC tag must be written by an administrator'
+                                    : isCheckpointCompleted
+                                        ? 'Completed today'
+                                        : 'Pending today',
+                                style: TextStyle(
+                                  color: requiresNfcWrite
+                                      ? Colors.redAccent
+                                      : isCheckpointCompleted
+                                          ? Colors.greenAccent
+                                          : Colors.white54,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        title: Text(
-                          name,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        subtitle: Text(
-                          isCheckpointCompleted
-                              ? 'Completed'
-                              : 'Pending',
-                          style: TextStyle(
-                            color: isCheckpointCompleted
-                                ? Colors.greenAccent
-                                : Colors.white54,
-                          ),
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),
@@ -297,43 +287,47 @@ class _SiteTourDetailScreenState extends State<SiteTourDetailScreen> {
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor:
-              isCompleted ? Colors.grey.shade700 : Colors.deepOrange,
+                  canScan ? Colors.deepOrange : Colors.grey.shade700,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             icon: Icon(
-              isCompleted ? Icons.check_circle : scanIcon,
+              completedToday ? Icons.check_circle : scanIcon,
               color: Colors.white,
             ),
             label: Text(
-              isCompleted ? 'Tour Completed' : scanButtonText,
+              completedToday
+                  ? 'Completed for Today'
+                  : isScheduledToday
+                      ? scanButtonText
+                      : 'No Site Tour Scheduled',
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
-            onPressed: isCompleted
-                ? null
-                : () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => isNfcTour
-                      ? SiteTourNfcScanScreen(
-                    postSiteId: widget.postSiteId,
-                    postSiteName: widget.postSiteName,
-                    tourId: tour['_id'].toString(),
-                  )
-                      : SiteTourQrScanScreen(
-                    postSiteId: widget.postSiteId,
-                    postSiteName: widget.postSiteName,
-                    tourId: tour['_id'].toString(),
-                  ),
-                ),
-              );
+            onPressed: canScan
+                ? () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => isNfcTour
+                            ? SiteTourNfcScanScreen(
+                                postSiteId: widget.postSiteId,
+                                postSiteName: widget.postSiteName,
+                                tourId: tour['_id'].toString(),
+                              )
+                            : SiteTourQrScanScreen(
+                                postSiteId: widget.postSiteId,
+                                postSiteName: widget.postSiteName,
+                                tourId: tour['_id'].toString(),
+                              ),
+                      ),
+                    );
 
-              if (result == true) {
-                await refreshTour();
-              }
-            },
+                    if (result == true) {
+                      await refreshTour();
+                    }
+                  }
+                : null,
           ),
         ),
       ),

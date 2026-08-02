@@ -12,6 +12,7 @@ import 'package:watch_team/screens/shifts/open_shift_screen.dart';
 import 'package:watch_team/screens/schedule/availability_screen.dart';
 import 'package:watch_team/screens/schedule/schedule_screen.dart';
 import 'package:watch_team/screens/reminder_screen.dart';
+import '../postsite_navigator.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});

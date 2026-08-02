@@ -543,10 +543,13 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       for (final f in schema!.fields) {
         if (f.type == FieldType.date) {
           values[f.keyName] = DateTime.now();
+        } else if (f.type == FieldType.time) {
+          values[f.keyName] = null;
+        } else if (f.type == FieldType.checkbox) {
+          values[f.keyName] = <String>[];
         } else if (f.type == FieldType.text ||
             f.type == FieldType.textarea ||
-            f.type == FieldType.number ||
-            f.type == FieldType.time) {
+            f.type == FieldType.number) {
           controllers[f.keyName] = TextEditingController();
         } else {
           values[f.keyName] = null;
@@ -598,6 +601,11 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     dynamic convert(dynamic v) {
       if (v == null) return null;
       if (v is DateTime) return v.toIso8601String();
+      if (v is TimeOfDay) {
+        final hour = v.hour.toString().padLeft(2, '0');
+        final minute = v.minute.toString().padLeft(2, '0');
+        return '$hour:$minute';
+      }
       if (v is Enum) return v.name;
       if (v is Duration) return v.inMilliseconds;
 
@@ -954,6 +962,59 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     }
   }
 
+
+  Future<void> _pickTime(String keyName) async {
+    final currentValue = values[keyName];
+    var initialTime = TimeOfDay.now();
+
+    if (currentValue is TimeOfDay) {
+      initialTime = currentValue;
+    } else if (currentValue is String && currentValue.isNotEmpty) {
+      final parts = currentValue.split(':');
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]);
+        final minute = int.tryParse(parts[1]);
+        if (hour != null && minute != null) {
+          initialTime = TimeOfDay(hour: hour, minute: minute);
+        }
+      }
+    }
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF0F3DFF),
+              surface: Color(0xFF121212),
+              onSurface: Colors.white,
+            ),
+            timePickerTheme: const TimePickerThemeData(
+              backgroundColor: Color(0xFF121212),
+              dialBackgroundColor: Color(0xFF2B2F35),
+              hourMinuteColor: Color(0xFF2B2F35),
+              hourMinuteTextColor: Colors.white,
+              dialHandColor: Color(0xFF0F3DFF),
+              dialTextColor: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() => values[keyName] = picked);
+    }
+  }
+
+  String _formatTime(TimeOfDay? time) {
+    if (time == null) return 'Select time';
+    return time.format(context);
+  }
+
   String _formatDate(DateTime d) {
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
@@ -1071,7 +1132,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       case FieldType.text:
       case FieldType.textarea:
       case FieldType.number:
-      case FieldType.time:
         final ctrl = controllers[f.keyName]!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1085,6 +1145,24 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
               keyboardType: f.type == FieldType.number
                   ? TextInputType.number
                   : TextInputType.text,
+            ),
+          ],
+        );
+
+      case FieldType.time:
+        final selectedTime = values[f.keyName] as TimeOfDay?;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            labelRow,
+            const SizedBox(height: 10),
+            _DarkTapField(
+              text: _formatTime(selectedTime),
+              onTap: () => _pickTime(f.keyName),
+              trailing: const Icon(
+                Icons.access_time_rounded,
+                color: Colors.white70,
+              ),
             ),
           ],
         );
@@ -1110,36 +1188,91 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         );
 
       case FieldType.checkbox:
-        final current = values[f.keyName] == true;
+        final selectedOptions = List<String>.from(
+          values[f.keyName] as List? ?? const <String>[],
+        );
+        final options = f.options ?? const <String>[];
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             labelRow,
             const SizedBox(height: 10),
-            InkWell(
-              onTap: () => setState(() => values[f.keyName] = !current),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            if (options.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF2B2F35),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFF3A3A3A)),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      current ? Icons.check_box : Icons.check_box_outline_blank,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      f.hint?.isNotEmpty == true ? f.hint! : 'Select',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ],
+                child: const Text(
+                  'No checkbox options configured',
+                  style: TextStyle(color: Colors.white70),
                 ),
-              ),
-            ),
+              )
+            else
+              ...options.map((option) {
+                final isSelected = selectedOptions.contains(option);
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      final updated = List<String>.from(selectedOptions);
+                      if (isSelected) {
+                        updated.remove(option);
+                      } else {
+                        updated.add(option);
+                      }
+                      setState(() => values[f.keyName] = updated);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2B2F35),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF0F3DFF)
+                              : const Color(0xFF3A3A3A),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isSelected
+                                ? Icons.check_box_rounded
+                                : Icons.check_box_outline_blank_rounded,
+                            color: isSelected
+                                ? const Color(0xFF0F3DFF)
+                                : Colors.white70,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              option,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
           ],
         );
     }

@@ -26,6 +26,9 @@ class _TimeClockState extends State<TimeClock> {
   bool _takeBreak = false;
   late String startClockTime;
   late String endClockTime;
+  DateTime? _clockInAt;
+  DateTime? _breakStartedAt;
+  int _savedBreakSeconds = 0;
   // currently on break
 
 
@@ -127,96 +130,156 @@ class _TimeClockState extends State<TimeClock> {
       },
     );
   }
-  void _startTimer() {
-    if (_isRunning) return;
-    DateTime now = DateTime.now();
-
-    // Reset everything for a fresh session
-    _timer?.cancel();
-    _breakTimer?.cancel();
-    setState(() {
-      _elapsed = Duration.zero;
-      _teaBreak = Duration.zero;
-      _remaining = _shiftDuration();
-      _overTime = Duration.zero;
-      _takeBreak = false;
-      _isRunning = true;
-    });
-    startClockTime = DateFormat('HH:mm:ss').format(now);
-    print(startClockTime);
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() => _elapsed += const Duration(seconds: 1));
-      _refreshRemaining();
-    });
-
-    _remainingTimer?.cancel();
-    _remainingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _refreshRemaining();
-    });
+  DateTime? _parseServerTime(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
   }
 
-  // Stop (Clock Out): stop all timers and freeze state
-  void _stopTimer() async {
+  void _startTicker() {
     _timer?.cancel();
-    _breakTimer?.cancel();
     _remainingTimer?.cancel();
-    DateTime stopNow = DateTime.now();
-    // Capture results
-    final work = _elapsed;
-    final brk  = _teaBreak;
-    final total = work + brk;
-    final overtime = _overTime;
-    endClockTime = DateFormat('HH:mm:ss').format(stopNow);
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _refreshFromTimestamps());
+    _remainingTimer = Timer.periodic(const Duration(seconds: 1), (_) => _refreshRemaining());
+  }
 
-    // Build a readable message
-    final msg =
-        'Work: ${_formatDuration(work)} | Break: ${_formatDuration(brk)} | Total: ${_formatDuration(total)}';
+  void _refreshFromTimestamps() {
+    final startedAt = _clockInAt;
+    if (!mounted || startedAt == null) return;
 
-    final msg2 = "Work Data Updated";
+    final now = DateTime.now();
+    final totalSeconds = now.difference(startedAt).inSeconds.clamp(0, 1 << 31).toInt();
+    var breakSeconds = _savedBreakSeconds;
+    if (_takeBreak && _breakStartedAt != null) {
+      breakSeconds += now.difference(_breakStartedAt!).inSeconds.clamp(0, 1 << 31).toInt();
+    }
+    final workSeconds = (totalSeconds - breakSeconds).clamp(0, 1 << 31).toInt();
 
-    // Print to console
-    debugPrint(msg);
-    await _sendData(work.toString(),brk.toString(),total.toString(), startClockTime.toString(),
-        endClockTime.toString());
+    setState(() {
+      _teaBreak = Duration(seconds: breakSeconds);
+      _elapsed = Duration(seconds: workSeconds);
+    });
+    _refreshRemaining();
+  }
 
-    // (Optional) show on screen too
-    if (mounted) {
+  void _restoreClockFromSession() {
+    final session = SessionData.activeSession;
+    final samePost = SessionData.isActiveAtPost(SessionData.postSiteID);
+    if (session == null || !samePost || session['clockedIn'] != true) return;
 
-      // print("I have work here");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg2)));
+    _clockInAt = _parseServerTime(session['clockInAt']);
+    _breakStartedAt = _parseServerTime(session['breakStartedAt']);
+    _savedBreakSeconds = int.tryParse(session['totalBreakSeconds']?.toString() ?? '0') ?? 0;
+    _takeBreak = session['isOnBreak'] == true;
+    _isRunning = !_takeBreak;
+    startClockTime = _clockInAt == null
+        ? ''
+        : DateFormat('HH:mm:ss').format(_clockInAt!);
+    _refreshFromTimestamps();
+    _startTicker();
+  }
+
+  Future<void> _startTimer() async {
+    if (_isRunning || _takeBreak) return;
+    if (SessionData.isActiveAtAnotherPost(SessionData.postSiteID)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Already clocked in at another post site.')),
+      );
+      return;
+    }
+    final reportId = SessionData.checkID;
+    if (reportId == null || !SessionData.isCheckedIn) {
+      notCheckedIn();
+      return;
     }
 
-    setState(() {
-      _isRunning = false;
-      _takeBreak = false;
-    });
-  }
-
-  // Toggle Break: pause/resume work and start/stop break counter
-  void _pause() {
-    if (_isRunning && !_takeBreak) {
-      // ▶ Currently working -> go on break
-      _timer?.cancel();
+    setState(() => _loading = true);
+    try {
+      final response = await ActiveGuardSessionApi.clockIn(reportId: reportId);
+      final session = response['activeSession'];
+      _clockInAt = _parseServerTime(session?['clockInAt']);
+      _breakStartedAt = null;
+      _savedBreakSeconds = 0;
+      startClockTime = _clockInAt == null
+          ? DateFormat('HH:mm:ss').format(DateTime.now())
+          : DateFormat('HH:mm:ss').format(_clockInAt!);
       setState(() {
-        _isRunning = false;
-        _takeBreak = true;
-      });
-      _breakTimer?.cancel();
-      _breakTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        setState(() => _teaBreak += const Duration(seconds: 1));
-      });
-    } else if (_takeBreak && !_isRunning) {
-      // ⏸ Currently on break -> end break and resume work
-      _breakTimer?.cancel();
-      setState(() {
+        _elapsed = Duration.zero;
+        _teaBreak = Duration.zero;
+        _remaining = _shiftDuration();
+        _overTime = Duration.zero;
         _takeBreak = false;
         _isRunning = true;
       });
+      _startTicker();
+      _refreshFromTimestamps();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _stopTimer() async {
+    final reportId = SessionData.checkID;
+    if (reportId == null) return;
+    setState(() => _loading = true);
+    try {
+      final response = await ActiveGuardSessionApi.clockOut(reportId: reportId);
       _timer?.cancel();
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        setState(() => _elapsed += const Duration(seconds: 1));
+      _breakTimer?.cancel();
+      _remainingTimer?.cancel();
+      _refreshFromTimestamps();
+      if (mounted) {
+        setState(() {
+          _isRunning = false;
+          _takeBreak = false;
+          _breakStartedAt = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message']?.toString() ?? 'Work Data Updated')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _pause() async {
+    final reportId = SessionData.checkID;
+    if (reportId == null || (!_isRunning && !_takeBreak)) return;
+    final startBreak = !_takeBreak;
+    setState(() => _loading = true);
+    try {
+      final response = await ActiveGuardSessionApi.updateBreak(
+        reportId: reportId,
+        start: startBreak,
+      );
+      final session = response['activeSession'];
+      _savedBreakSeconds = int.tryParse(session?['totalBreakSeconds']?.toString() ?? '0') ?? 0;
+      _breakStartedAt = _parseServerTime(session?['breakStartedAt']);
+      setState(() {
+        _takeBreak = session?['isOnBreak'] == true;
+        _isRunning = !_takeBreak;
       });
+      _refreshFromTimestamps();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -284,9 +347,10 @@ class _TimeClockState extends State<TimeClock> {
 
   @override
   void initState() {
-    // TODO: implement initState
-    //  checked = SessionData.clockedIn;
-
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _restoreClockFromSession();
+    });
   }
 
   void dispose() {
@@ -480,14 +544,15 @@ class _TimeClockState extends State<TimeClock> {
             ],
           )
               : GestureDetector(
-            onLongPress: (){
-              if (SessionData.clockedIn == true && _canClockInSelectedShift()) {
-                _startTimer();
-              } else {
-                notCheckedIn();
-              }
-
-            }, // long-press to Clock In (or change to onTap)
+            onLongPress: SessionData.isActiveAtAnotherPost(SessionData.postSiteID)
+                ? null
+                : () {
+                    if (SessionData.isCheckedIn && _canClockInSelectedShift()) {
+                      _startTimer();
+                    } else {
+                      notCheckedIn();
+                    }
+                  }, // long-press to Clock In (or change to onTap)
             // onLongPress: notCheckedIn,
             onTap: (){
               print(SessionData.clockedIn);
@@ -496,15 +561,24 @@ class _TimeClockState extends State<TimeClock> {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.green[600],
+                color: SessionData.isActiveAtAnotherPost(SessionData.postSiteID)
+                    ? Colors.grey[700]
+                    : Colors.green[600],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.timer_outlined, color: Colors.white),
-                  Text(" Clock In",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                children: [
+                  const Icon(Icons.timer_outlined, color: Colors.white),
+                  Flexible(
+                    child: Text(
+                      SessionData.isActiveAtAnotherPost(SessionData.postSiteID)
+                          ? " Already Clocked In at Another Post"
+                          : " Clock In",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ),
                 ],
               ),
             ),

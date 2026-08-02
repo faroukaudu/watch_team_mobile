@@ -4,6 +4,7 @@ import '../routes.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:watch_team/session_data.dart';
+import '../server_push.dart';
 import 'package:watch_team/global.dart' as g;
 import 'package:watch_team/services/worked_hours_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1066,6 +1067,20 @@ Future<bool> fetchUserProfile(String id) async {
 
       SessionData.userProfile = data['guardData'];
       SessionData.companyInfo = data['company'];
+
+      final companyId = SessionData.userProfile?['assignedCompanyID']?.toString() ?? '';
+      final guardId = SessionData.userProfile?['_id']?.toString() ?? id;
+      if (companyId.isNotEmpty && guardId.isNotEmpty) {
+        try {
+          await ActiveGuardSessionApi.fetchActiveSession(
+            companyId: companyId,
+            guardId: guardId,
+          );
+        } catch (e) {
+          debugPrint('Unable to restore active guard session: $e');
+          SessionData.applyActiveSession(null);
+        }
+      }
 
       return true;
     }
